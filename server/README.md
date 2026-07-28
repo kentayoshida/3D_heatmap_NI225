@@ -1,40 +1,43 @@
-# サーバーレス・データプロキシ（JPX → 寄与度）
+# サーバーレス・データプロキシ（J-Quants → 寄与度）
 
-フロントエンドはブラウザからJPXの有料APIを直接呼べません（認証・CORS）。この
-プロキシがAPIキーを保持し、JPXの株価から**寄与度**を計算して、フロントが期待する
-JSON（全7期間）を返します。
+フロントエンドはブラウザから [J-Quants API](https://jpx-jquants.com/) を直接呼べません
+（認証・CORS）。このプロキシが認証情報を保持し、J-Quantsの株価から**寄与度**を計算して、
+フロントが期待するJSON（全7期間）を返します。
 
 ```
-JPX API (株価) ──▶ このWorker（寄与度を計算）──▶ フロント (js/data-source.js)
-                    ▲ index-params.json（銘柄・業種・PAF・除数）
+J-Quants API (日次株価) ──▶ このWorker（寄与度を計算）──▶ フロント (js/data-source.js)
+                            ▲ index-params.json（銘柄・業種・PAF・除数）
 ```
 
 ## 実装状況
 
-- ✅ 変換ロジック（`worker.js` の `shapePeriod` / 寄与度計算）
-- ✅ 指数パラメータ（`index-params.json`：銘柄・業種・PAF・除数のシード）
-- ✅ CORS・キャッシュ・全7期間の並列取得
-- ⬜ **`fetchPeriodPrices()`**（`worker.js` 内）= JPX API 呼び出し本体。
-  JPXのエンドポイント／認証／レスポンス仕様をもとに実装します（**要・仕様共有**）。
+- ✅ 認証フロー（`auth_user` → refreshToken → `auth_refresh` → idToken、24hキャッシュ）
+- ✅ 日次株価取得（`/prices/daily_quotes?date=` を全銘柄・ページング対応で取得）
+- ✅ 全7期間の基準日算出・寄与度計算・整形・CORS・キャッシュ
+- ⬜ **`index-params.json` を公式の日経225銘柄コードに差し替え**（下記）
+- ⬜ 認証情報（secret）の登録とデプロイ
 
-## 寄与度の計算
+## J-Quantsについての前提
 
-```
-騰落率(%)  = (close − base) / base × 100
-寄与度     = PAF × (close − base) / 除数        （指数ポイント）
-```
+- **日次（EOD）データ**です。ザラ場のリアルタイムではありません。
+  - `1D` = 直近終値 vs 前営業日終値
+  - `1W`〜`1Y` = 直近終値 vs 各期間始点の終値
+- **データ鮮度はプラン依存**：Freeは約12週間ディレイ。直近日を出すには有料プラン
+  （Light/Standard/Premium）が必要です。
+- 価格は `AdjustmentClose`（分割調整後）を使用。長期の騰落率が分割で歪みません。
+  寄与度は `PAF × (close − base) / 除数` で近似します。
 
-- `close` = 期間終点の価格（現在値／最新終値）
-- `base`  = 期間始点の価格（1D=前日終値、1W=約5営業日前、YTD=前年末 …）
-- `PAF`   = 株価換算係数（大半は1。値がさ株のみ0.1〜0.9）
-- 除数    = 日経公表値（現在 ≈ 29.92）
-
-## デプロイ（Cloudflare Workers 例）
+## 認証情報（Cloudflare の例）
 
 ```bash
 npm i -g wrangler
-wrangler secret put JPX_API_KEY        # JPXのAPIキーを登録
-# 必要に応じて JPX_BASE_URL / ALLOW_ORIGIN を wrangler.toml の [vars] に設定
+
+# どちらか:
+wrangler secret put JQUANTS_REFRESH_TOKEN         # 推奨（1週間有効）
+# または
+wrangler secret put JQUANTS_MAILADDRESS
+wrangler secret put JQUANTS_PASSWORD              # 上記からrefreshTokenを自動取得
+
 wrangler deploy
 ```
 
@@ -44,14 +47,21 @@ wrangler deploy
 export const CONFIG = { endpoint: 'https://<your-worker>.workers.dev' };
 ```
 
-## 指数パラメータの更新
+## 指数パラメータ（`index-params.json`）
 
-`index-params.json` はサンプル由来の**シード**です。本番前に公式値へ差し替えます。
+現状はサンプル由来の**シード**（ダミーのフィラー銘柄を含む）です。本番前に
+**公式の日経225銘柄コード**へ差し替えてください。
+
+- **銘柄コードと採用可否**：日経（[日経平均プロフィル 構成銘柄](https://indexes.nikkei.co.jp/nkave/index/component?idx=nk225)）。J-Quantsは「225採用か否か」は持ちません。
+- **業種・銘柄名**：J-Quantsの `/listed/info` が `Sector33CodeName`（例: 電気機器 / 情報・通信業）を返すので、コードさえ正しければ自動補完可能。
+- **PAF（株価換算係数）**：大半は1。値がさ株のみ0.1〜0.9（日経 Premium Data Package が公式。数銘柄の手当てでも実用精度）。
+- **除数**：日経が日次公表（現在 ≈ 29.92）。`index-params.json` の `divisor` を更新。
 
 ```bash
-node server/build-params.mjs   # 現状は data/ni225.js から生成（要・公式データ差し替え）
+node server/build-params.mjs   # index-params.json を生成（現状は data/ni225.js 由来）
 ```
 
-- 銘柄・業種：日経平均プロフィル 構成銘柄（無料）
-- PAF・ウエート：日経 Premium Data Package（有料）／値がさ株のみ手当てでも実用可
-- 除数：日経が日次公表（≈ 29.92、変動する）
+## デプロイ先について
+
+Cloudflare Workers を例にしていますが、Vercel Edge / AWS Lambda 等でも
+`export default { fetch }` を各ランタイムのハンドラに合わせれば流用できます。

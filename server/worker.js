@@ -1,107 +1,168 @@
 // Serverless proxy (Cloudflare Worker style; adaptable to Vercel/Lambda).
 //
-// Responsibility: hold the JPX API key, fetch quotes for each period, compute
-// 寄与度 from index params, and return the exact JSON the frontend expects:
+// Holds J-Quants credentials, fetches daily prices for each period, computes
+// 寄与度 from index params, and returns the exact JSON the frontend expects:
 //   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
 //
-// The ONLY JPX-specific code is fetchPeriodPrices() below — fill it in from your
-// JPX API spec. Everything else (math, shaping, CORS, cache) is done.
+// J-Quants (https://jpx-jquants.com) is END-OF-DAY (daily) data, not intraday, so
+// "1D" = latest close vs the previous close. Longer periods compare the latest
+// close with the close at the start of the period. Data freshness depends on your
+// J-Quants plan (Free is delayed ~12 weeks; paid plans are near previous-day).
 //
-// Deploy (Cloudflare):  wrangler deploy   (set secret: wrangler secret put JPX_API_KEY)
-// Then in the frontend: js/data-source.js → CONFIG.endpoint = '<worker-url>'
+// Secrets (wrangler secret put ...):
+//   JQUANTS_REFRESH_TOKEN            (preferred)  — or —
+//   JQUANTS_MAILADDRESS + JQUANTS_PASSWORD        (used to obtain a refresh token)
+// Vars (wrangler.toml [vars]): ALLOW_ORIGIN (default '*')
+//
+// Frontend: js/data-source.js → CONFIG.endpoint = '<worker-url>'
 
-import PARAMS from './index-params.json'; // Wrangler/esbuild bundles JSON imports
+import PARAMS from './index-params.json' with { type: 'json' }; // bundled by Wrangler/esbuild
 
+const JQ = 'https://api.jquants.com/v1';
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
-const CACHE_TTL = 60; // seconds; align with your JPX data freshness (e.g. 15-min delay)
+const PAYLOAD_TTL = 600; // seconds; EOD data changes at most daily
+
+let _idToken = { token: null, exp: 0 };
+let _payload = { data: null, exp: 0 };
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const cors = {
       'access-control-allow-origin': env.ALLOW_ORIGIN || '*',
       'access-control-allow-methods': 'GET, OPTIONS',
     };
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-
     try {
-      const payload = await buildAllPeriods(env);
-      return new Response(JSON.stringify(payload), {
-        headers: {
-          ...cors,
-          'content-type': 'application/json; charset=utf-8',
-          'cache-control': `public, max-age=${CACHE_TTL}`,
-        },
+      const now = Date.now();
+      if (!_payload.data || now > _payload.exp) {
+        _payload = { data: await buildAllPeriods(env), exp: now + PAYLOAD_TTL * 1000 };
+      }
+      return new Response(JSON.stringify(_payload.data), {
+        headers: { ...cors, 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${PAYLOAD_TTL}` },
       });
     } catch (err) {
-      return new Response(JSON.stringify({ error: String(err && err.message || err) }), {
-        status: 502,
-        headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
+      return new Response(JSON.stringify({ error: String((err && err.message) || err) }), {
+        status: 502, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
       });
     }
   },
 };
 
+// ---- assemble all periods ---------------------------------------------------
 async function buildAllPeriods(env) {
+  const idToken = await getIdToken(env);
+  const todayJst = new Date(Date.now() + 9 * 3600 * 1000); // JST calendar date via UTC getters
+
+  const latest = await quotesOnOrBefore(todayJst, idToken);
+  if (!latest.map.size) throw new Error('No J-Quants quotes returned (check plan freshness / credentials).');
+
+  const baseDates = periodBaseDates(latest.date);
   const out = {};
-  // fetch all periods in parallel
-  const results = await Promise.all(PERIODS.map((p) => fetchPeriodPrices(p, env).then((prices) => [p, prices])));
-  for (const [period, prices] of results) {
-    out[period] = shapePeriod(prices);
+  for (const p of PERIODS) {
+    const base = await quotesOnOrBefore(baseDates[p], idToken);
+    out[p] = shapePeriod(latest.map, base.map);
   }
   return out;
 }
 
-// prices: Map<code, { close:number, base:number }>
-//   close = latest price for the period, base = price at the start of the period
-//           (prevClose for 1D, ~1 week ago for 1W, year start for YTD, etc.)
-function shapePeriod(prices) {
+// ---- 寄与度 math ------------------------------------------------------------
+// close/base use AdjustmentClose (split-adjusted). contribution over the period is
+// approximated as PAF × (close − base) / current-divisor (index points).
+function shapePeriod(latestMap, baseMap) {
   const divisor = PARAMS.divisor;
   const constituents = PARAMS.constituents.map((c) => {
-    const q = prices.get(c.code);
-    if (!q || !q.base) return { code: c.code, name: c.name, sector: c.sector, changePct: 0, contribution: 0 };
-    const diff = q.close - q.base;
-    const changePct = round2((diff / q.base) * 100);
-    const contribution = round2(((c.paf ?? 1) * diff) / divisor);
-    return { code: c.code, name: c.name, sector: c.sector, changePct, contribution };
+    const c4 = code4(c.code);
+    const close = latestMap.get(c4);
+    const base = baseMap.get(c4);
+    if (close == null || base == null || !base) {
+      return { code: c.code, name: c.name, sector: c.sector, changePct: 0, contribution: 0 };
+    }
+    const diff = close - base;
+    return {
+      code: c.code, name: c.name, sector: c.sector,
+      changePct: round2((diff / base) * 100),
+      contribution: round2(((c.paf ?? 1) * diff) / divisor),
+    };
   });
   return { asOf: new Date().toISOString(), constituents };
 }
 
+// ---- J-Quants: tokens -------------------------------------------------------
+async function getIdToken(env) {
+  const now = Date.now();
+  if (_idToken.token && now < _idToken.exp) return _idToken.token;
+
+  let refresh = env.JQUANTS_REFRESH_TOKEN;
+  if (!refresh) {
+    if (!env.JQUANTS_MAILADDRESS || !env.JQUANTS_PASSWORD) {
+      throw new Error('Set JQUANTS_REFRESH_TOKEN, or JQUANTS_MAILADDRESS + JQUANTS_PASSWORD.');
+    }
+    const r = await fetch(`${JQ}/token/auth_user`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mailaddress: env.JQUANTS_MAILADDRESS, password: env.JQUANTS_PASSWORD }),
+    });
+    if (!r.ok) throw new Error(`auth_user ${r.status}`);
+    refresh = (await r.json()).refreshToken;
+  }
+  const r2 = await fetch(`${JQ}/token/auth_refresh?refreshtoken=${encodeURIComponent(refresh)}`, { method: 'POST' });
+  if (!r2.ok) throw new Error(`auth_refresh ${r2.status}`);
+  _idToken = { token: (await r2.json()).idToken, exp: now + 23 * 3600 * 1000 };
+  return _idToken.token;
+}
+
+// ---- J-Quants: daily quotes -------------------------------------------------
+// All stocks for one date (paginated) → Map<code4, AdjustmentClose>.
+async function quotesForDate(dateStr, idToken) {
+  const map = new Map();
+  let key = null;
+  do {
+    const url = `${JQ}/prices/daily_quotes?date=${dateStr}` + (key ? `&pagination_key=${encodeURIComponent(key)}` : '');
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!r.ok) throw new Error(`daily_quotes ${r.status}`);
+    const j = await r.json();
+    for (const q of j.daily_quotes || []) {
+      const price = q.AdjustmentClose ?? q.Close;
+      if (price != null) map.set(code4(q.Code), price);
+    }
+    key = j.pagination_key || null;
+  } while (key);
+  return map;
+}
+
+// Nearest trading day on/before target (steps back up to 7 days for holidays).
+async function quotesOnOrBefore(target, idToken) {
+  for (let i = 0; i < 8; i++) {
+    const d = addDays(target, -i);
+    const map = await quotesForDate(fmt(d), idToken);
+    if (map.size) return { date: d, map };
+  }
+  return { date: target, map: new Map() };
+}
+
+// ---- date helpers (UTC getters on a JST-shifted Date) -----------------------
+function periodBaseDates(latest) {
+  const y = latest.getUTCFullYear();
+  return {
+    '1D': addDays(latest, -1),
+    '1W': addDays(latest, -7),
+    '1M': addMonths(latest, -1),
+    '3M': addMonths(latest, -3),
+    '6M': addMonths(latest, -6),
+    'YTD': new Date(Date.UTC(y - 1, 11, 31)),
+    '1Y': addMonths(latest, -12),
+  };
+}
+function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+function addMonths(d, n) {
+  const x = new Date(d.getTime());
+  x.setUTCMonth(x.getUTCMonth() + n);
+  return x;
+}
+function fmt(d) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-digit (4-digit + '0')
 const round2 = (x) => Math.round(x * 100) / 100;
 
-// ---------------------------------------------------------------------------
-// JPX ADAPTER — the one piece to implement from your JPX API spec.
-// Return Map<code, { close, base }> for the given period.
-//   - "close": latest/current price (or last daily close)
-//   - "base":  reference price at the START of the period
-//       1D  → previous day's close
-//       1W  → close ~5 trading days ago
-//       1M/3M/6M/1Y → close N months/years ago
-//       YTD → last close of the previous year
-// Use env.JPX_API_KEY for auth. The 15-min delayed API gives current values;
-// historical baselines come from JPX's daily/historical endpoint.
-// ---------------------------------------------------------------------------
-async function fetchPeriodPrices(period, env) {
-  if (!env.JPX_API_KEY) {
-    throw new Error('JPX_API_KEY not set. Configure the secret and implement fetchPeriodPrices().');
-  }
-  const codes = PARAMS.constituents.map((c) => c.code);
-
-  // TODO: replace with real JPX API calls. Example skeleton:
-  //
-  // const quote = await fetch(`${env.JPX_BASE_URL}/quotes?codes=${codes.join(',')}`, {
-  //   headers: { Authorization: `Bearer ${env.JPX_API_KEY}` },
-  // }).then((r) => r.json());
-  // const baseDate = periodBaseDate(period);           // compute the baseline date
-  // const hist = await fetch(`${env.JPX_BASE_URL}/history?date=${baseDate}&codes=${codes.join(',')}`, {
-  //   headers: { Authorization: `Bearer ${env.JPX_API_KEY}` },
-  // }).then((r) => r.json());
-  //
-  // const map = new Map();
-  // for (const code of codes) {
-  //   map.set(code, { close: quote[code].price, base: hist[code].close });
-  // }
-  // return map;
-
-  throw new Error(`fetchPeriodPrices('${period}') not implemented — awaiting JPX API spec.`);
-}
+// exported for unit tests (ignored by the Worker runtime)
+export const _internals = { shapePeriod, periodBaseDates, addMonths, addDays, fmt, code4 };
