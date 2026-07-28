@@ -2,13 +2,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, createTooltip, buildLegend } from './ui.js';
+import { buildPeriodBar, createTooltip, buildLegend, buildOpacityControl } from './ui.js';
+import { loadData } from './data-source.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const W = 100, D = 70;         // base-plane extent (X, Z)
 
-const DATA = window.NI225_DATA;
-if (!DATA) throw new Error('NI225_DATA not loaded — include data/ni225.js before main.js');
+// Bundled sample by default; point data-source.js CONFIG.endpoint at a backend
+// (JPX-fed) to go live. Top-level await keeps the rest of setup unchanged.
+const DATA = await loadData();
 
 const stage = document.getElementById('stage');
 
@@ -63,6 +65,7 @@ heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
 
 // ---- UI ---------------------------------------------------------------------
 buildLegend(document.getElementById('legend'));
+buildOpacityControl(document.getElementById('controls'), (v) => heatmap.setOpacity(v));
 const tooltip = createTooltip(document.body);
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
 updateAsOf();

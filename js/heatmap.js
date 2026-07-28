@@ -30,10 +30,24 @@ export class Heatmap {
     this.labelGroup = new THREE.Group();
     this.group.add(this.labelGroup);
     this.cap = 3;
+    this.opacity = 1;
     this.highlighted = null;
   }
 
   get pickables() { return this.meshes; }
+
+  /** User-adjustable bar transparency. v in [0,1] (1 = opaque). */
+  setOpacity(v) {
+    this.opacity = v;
+    for (const m of this.meshes) this._applyOpacity(m);
+  }
+
+  _applyOpacity(m) {
+    const translucent = this.opacity < 0.999;
+    m.material.opacity = this.opacity;
+    m.material.transparent = translucent;
+    m.material.depthWrite = !translucent; // see-through when translucent
+  }
 
   _cap(constituents) {
     const arr = constituents.map((c) => Math.abs(c.changePct)).filter((v) => v > 0).sort((a, b) => a - b);
@@ -81,6 +95,7 @@ export class Heatmap {
         this.byCode.set(s.code, m);
       }
       m.userData = { ...s, cap, baseColor: color.clone() };
+      this._applyOpacity(m);
 
       if (animate) {
         m._tween = {

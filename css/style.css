@@ -59,6 +59,41 @@ html, body {
 .lg-scale .down { color: var(--down); font-weight: 600; }
 .lg-hint { color: var(--muted); margin-top: 6px; font-size: 11.5px; }
 
+/* ---- controls (transparency) ---- */
+#controls {
+  right: 16px;
+  bottom: 16px;
+  font-size: 12.5px;
+}
+.ctl-row { display: flex; align-items: center; gap: 10px; }
+.ctl-label { color: var(--text); font-weight: 600; }
+.ctl-val { color: var(--muted); width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.ctl-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(120,140,190,0.25), rgba(120,140,190,0.55));
+  outline: none;
+  cursor: pointer;
+}
+.ctl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #cdd8f5;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.5);
+}
+.ctl-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #cdd8f5;
+}
+
 /* ---- top bar / period selector ---- */
 #topbar {
   position: absolute;

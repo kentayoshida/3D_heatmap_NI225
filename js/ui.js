@@ -63,6 +63,20 @@ export function createTooltip(parent) {
   };
 }
 
+// Wires up the transparency slider. `onChange` receives opacity in [0.2, 1].
+export function buildOpacityControl(el, onChange) {
+  const input = el.querySelector('#opacity');
+  const out = el.querySelector('#opacity-val');
+  const apply = () => {
+    const pct = Math.round(+input.value);
+    out.textContent = pct + '%';
+    onChange(pct / 100);
+  };
+  input.addEventListener('input', apply);
+  apply();
+  return { set(pct) { input.value = String(pct); apply(); } };
+}
+
 export function buildLegend(el) {
   el.innerHTML =
     `<div class="lg-title">日経平均 3D ヒートマップ</div>` +

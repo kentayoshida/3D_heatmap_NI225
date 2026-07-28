@@ -13,6 +13,15 @@
 
     <div id="legend" class="panel"></div>
 
+    <div id="controls" class="panel">
+      <label class="ctl-row" for="opacity">
+        <span class="ctl-label">透明度</span>
+        <input id="opacity" class="ctl-slider" type="range" min="20" max="100" step="1" value="100"
+               aria-label="棒の透明度" />
+        <output id="opacity-val" class="ctl-val">100%</output>
+      </label>
+    </div>
+
     <div id="topbar">
       <div id="periods" class="period-bar" role="group" aria-label="対象期間"></div>
       <div id="asof" class="asof"></div>
