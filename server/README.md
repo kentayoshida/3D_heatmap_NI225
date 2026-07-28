@@ -47,19 +47,30 @@ wrangler deploy
 export const CONFIG = { endpoint: 'https://<your-worker>.workers.dev' };
 ```
 
-## 指数パラメータ（`index-params.json`）
+## 指数パラメータ（`index-params.json`）の作り方
 
-現状はサンプル由来の**シード**（ダミーのフィラー銘柄を含む）です。本番前に
-**公式の日経225銘柄コード**へ差し替えてください。
-
-- **銘柄コードと採用可否**：日経（[日経平均プロフィル 構成銘柄](https://indexes.nikkei.co.jp/nkave/index/component?idx=nk225)）。J-Quantsは「225採用か否か」は持ちません。
-- **業種・銘柄名**：J-Quantsの `/listed/info` が `Sector33CodeName`（例: 電気機器 / 情報・通信業）を返すので、コードさえ正しければ自動補完可能。
-- **PAF（株価換算係数）**：大半は1。値がさ株のみ0.1〜0.9（日経 Premium Data Package が公式。数銘柄の手当てでも実用精度）。
-- **除数**：日経が日次公表（現在 ≈ 29.92）。`index-params.json` の `divisor` を更新。
+**推奨パイプライン**（公式CSV → build → J-Quants補完）:
 
 ```bash
-node server/build-params.mjs   # index-params.json を生成（現状は data/ni225.js 由来）
+# 1) 公式の PAF CSV をダウンロードして server/ に置く（225銘柄コード＋PAF＝権威データ）
+#    https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_225_price_adjustment_factor_jp.csv
+curl -L -o server/nikkei_225_price_adjustment_factor_jp.csv \
+  https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_225_price_adjustment_factor_jp.csv
+
+# 2) CSV から index-params.json を生成（コード＋PAF。CSVが無ければ候補リストにフォールバック）
+node server/build-params.mjs
+
+# 3) 銘柄名・業種を J-Quants /listed/info の権威データで補完（未採用/廃止コードは警告）
+JQUANTS_REFRESH_TOKEN=... node server/enrich-params.mjs
 ```
+
+- **銘柄コード＋採用可否＋PAF**：公式PAF CSV（上記）。日経が保有し、J-Quantsは「225採用か否か」を持ちません。CSVパーサはエンコーディング非依存でコードとPAFのみ抽出します。
+- **業種・銘柄名**：J-Quants `/listed/info` の `Sector33CodeName` / `CompanyName` で自動補完（`enrich-params.mjs`）。
+- **PAF（株価換算係数）**：大半は1。値がさ株のみ0.1〜0.9。CSVから取り込み。
+- **除数（Divisor）**：日経が日次公表（現在 ≈ 29.92）。[指数情報ページ](https://indexes.nikkei.co.jp/nkave/index/profile)で確認し、`build-params.mjs` の `DIVISOR` を更新。
+
+> CSVを置かない場合は `server/constituents.mjs`（手動編集の候補リスト）にフォールバックします。
+> これは検証用のスーパーセット（現在245件）で、正確な225の確定にはCSVが必要です。
 
 ## デプロイ先について
 
