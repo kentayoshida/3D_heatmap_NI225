@@ -1,0 +1,132 @@
+// App entry: scene, camera, controls, lights, ground, and wiring to UI.
+import * as THREE from 'three';
+import { OrbitControls } from 'OrbitControls';
+import { Heatmap } from './heatmap.js';
+import { buildPeriodBar, createTooltip, buildLegend } from './ui.js';
+
+const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
+const W = 100, D = 70;         // base-plane extent (X, Z)
+
+const DATA = window.NI225_DATA;
+if (!DATA) throw new Error('NI225_DATA not loaded — include data/ni225.js before main.js');
+
+const stage = document.getElementById('stage');
+
+// ---- renderer / scene / camera ---------------------------------------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0e14);
+scene.fog = new THREE.Fog(0x0b0e14, 160, 320);
+
+const camera = new THREE.PerspectiveCamera(50, stage.clientWidth / stage.clientHeight, 0.1, 2000);
+camera.position.set(0, 94, 132);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, -2, 0);
+controls.minDistance = 30;
+controls.maxDistance = 320;
+controls.rotateSpeed = 0.9;
+
+// ---- lights -----------------------------------------------------------------
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x141822, 1.05));
+const key = new THREE.DirectionalLight(0xffffff, 1.35);
+key.position.set(60, 120, 40);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x9fb4ff, 0.4);
+fill.position.set(-80, 60, -60);
+scene.add(fill);
+
+// ---- ground: 0% baseline plane + grid --------------------------------------
+const planeGeo = new THREE.PlaneGeometry(W + 24, D + 24);
+const plane = new THREE.Mesh(
+  planeGeo,
+  new THREE.MeshBasicMaterial({ color: 0x141925, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+);
+plane.rotation.x = -Math.PI / 2;
+plane.position.y = -0.02;
+scene.add(plane);
+
+const grid = new THREE.GridHelper(Math.max(W, D) + 24, 24, 0x2a3550, 0x1a2233);
+grid.position.y = 0;
+scene.add(grid);
+
+// ---- heatmap ----------------------------------------------------------------
+const heatmap = new Heatmap(scene, { W, D });
+let currentPeriod = '1D';
+heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
+
+// ---- UI ---------------------------------------------------------------------
+buildLegend(document.getElementById('legend'));
+const tooltip = createTooltip(document.body);
+const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
+updateAsOf();
+
+function setPeriod(p) {
+  if (!DATA[p]) return;
+  currentPeriod = p;
+  heatmap.setData(DATA[p].constituents, { animate: true });
+  updateAsOf();
+}
+
+function updateAsOf() {
+  const el = document.getElementById('asof');
+  if (el) el.textContent = 'as of ' + (DATA[currentPeriod].asOf || '').replace('T', ' ').replace(/\+.*/, '') + ' (sample)';
+}
+
+// ---- hover picking ----------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hoverMesh = null;
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(heatmap.pickables, false);
+  if (hits.length) {
+    const m = hits[0].object;
+    if (m !== hoverMesh) { hoverMesh = m; heatmap.highlight(m); }
+    tooltip.show(m.userData, heatmap.cap, e.clientX, e.clientY);
+  } else if (hoverMesh) {
+    hoverMesh = null;
+    heatmap.clearHighlight();
+    tooltip.hide();
+  } else {
+    tooltip.move(e.clientX, e.clientY);
+  }
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+  hoverMesh = null;
+  heatmap.clearHighlight();
+  tooltip.hide();
+});
+
+// ---- resize -----------------------------------------------------------------
+function onResize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+// ---- loop -------------------------------------------------------------------
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  controls.update();
+  heatmap.update(dt);
+  renderer.render(scene, camera);
+}
+animate();
+
+// expose for debugging / e2e checks
+window.__heatmap = { scene, camera, controls, heatmap, setPeriod, PERIODS };
