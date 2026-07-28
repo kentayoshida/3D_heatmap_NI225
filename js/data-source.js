@@ -9,16 +9,26 @@
 // that proxy (also usable in Node).
 
 export const CONFIG = {
-  // e.g. 'https://your-host/api/ni225-heatmap'  (returns the shape above)
-  endpoint: null,
+  // J-Quants-fed serverless proxy (returns the shape above). Set to null to use
+  // the bundled sample data instead.
+  endpoint: 'https://ni225-heatmap-proxy.kenta0117.workers.dev',
 };
 
 /** Load all periods. Returns { period: { asOf, constituents } }. */
 export async function loadData() {
   if (CONFIG.endpoint) {
-    const res = await fetch(CONFIG.endpoint, { headers: { accept: 'application/json' } });
-    if (!res.ok) throw new Error(`data endpoint responded ${res.status}`);
-    return normalize(await res.json());
+    try {
+      const res = await fetch(CONFIG.endpoint, { headers: { accept: 'application/json' } });
+      if (!res.ok) throw new Error(`data endpoint responded ${res.status}`);
+      const json = await res.json();
+      if (json && json.error) throw new Error(`proxy error: ${json.error}`);
+      return normalize(json);
+    } catch (err) {
+      // Don't break the page during setup — fall back to the bundled sample.
+      console.warn('[ni225] live data unavailable, using bundled sample:', err.message);
+      if (typeof window !== 'undefined' && window.NI225_DATA) return window.NI225_DATA;
+      throw err;
+    }
   }
   if (typeof window !== 'undefined' && window.NI225_DATA) return window.NI225_DATA;
   throw new Error('No data source configured (set CONFIG.endpoint or include data/ni225.js).');

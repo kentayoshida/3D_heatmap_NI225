@@ -29,17 +29,20 @@ J-Quants API (日次株価) ──▶ このWorker（寄与度を計算）──
 
 ## 認証情報（Cloudflare の例）
 
+**メールアドレス＋パスワード方式を推奨**します。リフレッシュトークンは約1週間で
+失効しますが、この方式ならWorkerが毎回自動で新しいトークンを取得します。リフレッシュ
+トークンを設定していても、失効時は自動でメール＋パスワードにフォールバックします。
+
 ```bash
 npm i -g wrangler
-
-# どちらか:
-wrangler secret put JQUANTS_REFRESH_TOKEN         # 推奨（1週間有効）
-# または
-wrangler secret put JQUANTS_MAILADDRESS
-wrangler secret put JQUANTS_PASSWORD              # 上記からrefreshTokenを自動取得
-
+wrangler secret put JQUANTS_MAILADDRESS   # J-Quantsのログインメール
+wrangler secret put JQUANTS_PASSWORD      # J-Quantsのパスワード
 wrangler deploy
+# （任意）JQUANTS_REFRESH_TOKEN も設定可。失効時は上記へ自動フォールバック。
 ```
+
+> 動作確認：デプロイ先URLをブラウザ/`curl.exe`で開くとJSONが返ります。
+> 認証やプラン鮮度に問題があると `{"error": "..."}` が返るので原因が分かります。
 
 デプロイ後、フロントの `js/data-source.js` を設定:
 

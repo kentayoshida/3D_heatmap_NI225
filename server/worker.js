@@ -92,22 +92,36 @@ async function getIdToken(env) {
   const now = Date.now();
   if (_idToken.token && now < _idToken.exp) return _idToken.token;
 
-  let refresh = env.JQUANTS_REFRESH_TOKEN;
-  if (!refresh) {
-    if (!env.JQUANTS_MAILADDRESS || !env.JQUANTS_PASSWORD) {
-      throw new Error('Set JQUANTS_REFRESH_TOKEN, or JQUANTS_MAILADDRESS + JQUANTS_PASSWORD.');
-    }
-    const r = await fetch(`${JQ}/token/auth_user`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mailaddress: env.JQUANTS_MAILADDRESS, password: env.JQUANTS_PASSWORD }),
-    });
-    if (!r.ok) throw new Error(`auth_user ${r.status}`);
-    refresh = (await r.json()).refreshToken;
+  const haveLogin = env.JQUANTS_MAILADDRESS && env.JQUANTS_PASSWORD;
+  const cache = (t) => { _idToken = { token: t, exp: now + 23 * 3600 * 1000 }; return t; };
+
+  // 1) try a provided refresh token
+  if (env.JQUANTS_REFRESH_TOKEN) {
+    const t = await tryRefresh(env.JQUANTS_REFRESH_TOKEN);
+    if (t) return cache(t);
+    if (!haveLogin) throw new Error('auth_refresh failed (refresh token expired/invalid?) and no JQUANTS_MAILADDRESS/PASSWORD fallback set.');
   }
-  const r2 = await fetch(`${JQ}/token/auth_refresh?refreshtoken=${encodeURIComponent(refresh)}`, { method: 'POST' });
-  if (!r2.ok) throw new Error(`auth_refresh ${r2.status}`);
-  _idToken = { token: (await r2.json()).idToken, exp: now + 23 * 3600 * 1000 };
-  return _idToken.token;
+  // 2) obtain a fresh refresh token via mail + password
+  if (haveLogin) {
+    const t = await tryRefresh(await authUser(env));
+    if (t) return cache(t);
+    throw new Error('auth_refresh failed after auth_user.');
+  }
+  throw new Error('Set JQUANTS_REFRESH_TOKEN, or JQUANTS_MAILADDRESS + JQUANTS_PASSWORD.');
+}
+
+async function tryRefresh(refresh) {
+  const r = await fetch(`${JQ}/token/auth_refresh?refreshtoken=${encodeURIComponent(refresh)}`, { method: 'POST' });
+  return r.ok ? (await r.json()).idToken : null;
+}
+
+async function authUser(env) {
+  const r = await fetch(`${JQ}/token/auth_user`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mailaddress: env.JQUANTS_MAILADDRESS, password: env.JQUANTS_PASSWORD }),
+  });
+  if (!r.ok) throw new Error(`auth_user ${r.status}`);
+  return (await r.json()).refreshToken;
 }
 
 // ---- J-Quants: daily quotes -------------------------------------------------

@@ -28,10 +28,10 @@ let constituents;
 let source;
 if (existsSync(CSV_PATH)) {
   source = 'official PAF CSV';
-  const paf = parsePafCsv(readFileSync(CSV_PATH));
-  constituents = paf.map(({ code, paf }) => {
+  const rows = parsePafCsv(readFileSync(CSV_PATH));
+  constituents = rows.map(({ code, name, sector, paf }) => {
     const m = META.get(code) || {};
-    return { code, name: m.name || code, sector: m.sector || '未分類', paf };
+    return { code, name: name || m.name || code, sector: sector || m.sector || '未分類', paf };
   });
 } else {
   source = 'constituents.mjs (candidate superset — provide the official CSV to pin exactly 225)';
@@ -39,7 +39,7 @@ if (existsSync(CSV_PATH)) {
 }
 
 const params = {
-  _note: 'Run enrich-params.mjs to fill authoritative name/sector from J-Quants. PAF from official CSV when provided; else 1.',
+  _note: 'Built from official Nikkei PAF CSV (code/name/sector/PAF). enrich-params.mjs is optional (switches sector to J-Quants Sector33CodeName).',
   _source: source,
   asOfParams: new Date().toISOString().slice(0, 10),
   divisor: DIVISOR,
