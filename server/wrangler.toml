@@ -1,5 +1,5 @@
-# Cloudflare Workers config for the J-Quants → 寄与度 proxy.
-#   wrangler secret put JQUANTS_REFRESH_TOKEN   (or JQUANTS_MAILADDRESS + JQUANTS_PASSWORD)
+# Cloudflare Workers config for the J-Quants V2 → 寄与度 proxy.
+#   wrangler secret put JQUANTS_API_KEY   (V2 API key from the J-Quants dashboard)
 #   wrangler deploy
 name = "ni225-heatmap-proxy"
 main = "worker.js"
@@ -9,7 +9,5 @@ compatibility_date = "2025-01-01"
 # Lock this down to your site in production, e.g. "https://markets-lab.com"
 ALLOW_ORIGIN = "*"
 
-# Secrets are set via `wrangler secret put` (do NOT put them here):
-#   JQUANTS_REFRESH_TOKEN
-#   JQUANTS_MAILADDRESS
-#   JQUANTS_PASSWORD
+# Secret set via `wrangler secret put` (do NOT put it here):
+#   JQUANTS_API_KEY

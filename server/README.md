@@ -27,22 +27,23 @@ J-Quants API (日次株価) ──▶ このWorker（寄与度を計算）──
 - 価格は `AdjustmentClose`（分割調整後）を使用。長期の騰落率が分割で歪みません。
   寄与度は `PAF × (close − base) / 除数` で近似します。
 
-## 認証情報（Cloudflare の例）
+## 認証情報（J-Quants V2 / Cloudflare の例）
 
-**メールアドレス＋パスワード方式を推奨**します。リフレッシュトークンは約1週間で
-失効しますが、この方式ならWorkerが毎回自動で新しいトークンを取得します。リフレッシュ
-トークンを設定していても、失効時は自動でメール＋パスワードにフォールバックします。
+J-Quants は **V2 で API キー方式**（`x-api-key` ヘッダー、有効期限なし）に変わりました
+（旧V1のトークン方式は2026/6/1終了）。APIキーは
+[ダッシュボード](https://jpx-jquants.com/dashboard/api-keys)で発行します。
 
 ```bash
 npm i -g wrangler
-wrangler secret put JQUANTS_MAILADDRESS   # J-Quantsのログインメール
-wrangler secret put JQUANTS_PASSWORD      # J-Quantsのパスワード
+wrangler secret put JQUANTS_API_KEY   # V2 APIキーを貼り付け
 wrangler deploy
-# （任意）JQUANTS_REFRESH_TOKEN も設定可。失効時は上記へ自動フォールバック。
 ```
 
 > 動作確認：デプロイ先URLをブラウザ/`curl.exe`で開くとJSONが返ります。
 > 認証やプラン鮮度に問題があると `{"error": "..."}` が返るので原因が分かります。
+>
+> V2の日次株価は `GET https://api.jquants.com/v2/equities/bars/daily?date=YYYYMMDD`
+> （ヘッダ `x-api-key`）。フィールド名（`AdjC` 等）は環境差に強い寛容パースで取り込みます。
 
 デプロイ後、フロントの `js/data-source.js` を設定:
 
