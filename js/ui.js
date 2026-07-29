@@ -80,10 +80,25 @@ export function buildOpacityControl(el, onChange) {
   return { set(t) { input.value = String(t); apply(); } };
 }
 
+// Toggle that flips the vertical direction of bars. `onChange` receives a boolean
+// (true = inverted: plus down / minus up).
+export function buildInvertToggle(el, onChange) {
+  const btn = el.querySelector('#invert');
+  let inverted = false;
+  const render = () => {
+    btn.textContent = inverted ? 'プラス下 / マイナス上' : 'プラス上 / マイナス下';
+    btn.classList.toggle('active', inverted);
+    btn.setAttribute('aria-pressed', String(inverted));
+  };
+  btn.addEventListener('click', () => { inverted = !inverted; render(); onChange(inverted); });
+  render();
+  return { get() { return inverted; } };
+}
+
 export function buildLegend(el) {
   el.innerHTML =
     `<div class="lg-title">日経平均 3D ヒートマップ</div>` +
-    `<div class="lg-enc"><b>高さ</b> = 騰落率（0%基準・上=プラス/下=マイナス）</div>` +
+    `<div class="lg-enc" id="lg-dir"><b>高さ</b> = 騰落率（0%基準・上=プラス/下=マイナス）</div>` +
     `<div class="lg-enc"><b>面積</b> = 寄与度</div>` +
     `<div class="lg-scale"><span class="down">下落</span>` +
     `<span class="lg-grad"></span><span class="up">上昇</span></div>` +

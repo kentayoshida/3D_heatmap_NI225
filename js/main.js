@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, createTooltip, buildLegend, buildOpacityControl } from './ui.js';
+import { buildPeriodBar, createTooltip, buildLegend, buildOpacityControl, buildInvertToggle } from './ui.js';
 import { loadData } from './data-source.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
@@ -66,6 +66,11 @@ heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
 // ---- UI ---------------------------------------------------------------------
 buildLegend(document.getElementById('legend'));
 buildOpacityControl(document.getElementById('controls'), (t) => heatmap.setTransparency(t));
+buildInvertToggle(document.getElementById('controls'), (inv) => {
+  heatmap.setInvert(inv);
+  const dir = document.getElementById('lg-dir');
+  if (dir) dir.innerHTML = `<b>高さ</b> = 騰落率（0%基準・${inv ? '上=マイナス/下=プラス' : '上=プラス/下=マイナス'}）`;
+});
 const tooltip = createTooltip(document.body);
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
 updateAsOf();

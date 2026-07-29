@@ -37,10 +37,21 @@ export class Heatmap {
     this.opacity = 1;      // current fill opacity
     this.transparency = 0; // slider fraction [0,1]
     this.xray = false;     // wireframe (outline-only) mode
+    this.invert = false;   // flip vertical direction (plus down / minus up)
+    this._constituents = null;
     this.highlighted = null;
   }
 
   get pickables() { return this.meshes; }
+
+  // Effective vertical direction for a change%, honoring the invert toggle.
+  _sign(pct) { return (pct >= 0 ? 1 : -1) * (this.invert ? -1 : 1); }
+
+  /** Flip which way bars point (plus up/minus down ↔ plus down/minus up). */
+  setInvert(v) {
+    this.invert = v;
+    if (this._constituents) this.setData(this._constituents, { animate: true });
+  }
 
   /**
    * Transparency slider handler. t in [0,1]:
@@ -83,6 +94,7 @@ export class Heatmap {
 
   /** Rebuild the field from a period's constituents. */
   setData(constituents, { animate = true } = {}) {
+    this._constituents = constituents;
     const cap = this._cap(constituents);
     this.cap = cap;
     const { stocks, sectors } = layoutTreemap(constituents, this.W, this.D);
@@ -102,7 +114,7 @@ export class Heatmap {
 
     for (const s of stocks) {
       const height = this._height(s.changePct, cap);
-      const sign = s.changePct >= 0 ? 1 : -1;
+      const sign = this._sign(s.changePct);
       const w = Math.max(s.w - BOX_GAP, 0.05);
       const d = Math.max(s.d - BOX_GAP, 0.05);
       const color = changeColor(s.changePct, cap);
@@ -214,7 +226,7 @@ export class Heatmap {
       .sort((a, b) => b.w * b.d - a.w * a.d)
       .slice(0, 34);
     for (const s of ranked) {
-      const sign = s.changePct >= 0 ? 1 : -1;
+      const sign = this._sign(s.changePct);
       const height = this._height(s.changePct, cap);
       const topY = Math.max(0, sign * height);
       const pctTxt = (s.changePct >= 0 ? '+' : '') + s.changePct.toFixed(2) + '%';
