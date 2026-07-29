@@ -15,18 +15,21 @@
 
     <div id="controls" class="panel">
       <label class="ctl-row" for="opacity">
-        <span class="ctl-label">透明度</span>
+        <span class="ctl-label" id="lbl-opacity">透明度</span>
         <input id="opacity" class="ctl-slider" type="range" min="0" max="100" step="1" value="0"
-               aria-label="透明度" />
+               aria-label="opacity" />
         <output id="opacity-val" class="ctl-val">0%</output>
       </label>
       <div class="ctl-row">
-        <span class="ctl-label">向き</span>
+        <span class="ctl-label" id="lbl-invert">向き</span>
         <button id="invert" class="toggle-btn" type="button" aria-pressed="false">プラス上 / マイナス下</button>
       </div>
     </div>
 
-    <div id="indices" class="period-bar" role="group" aria-label="対象指数"></div>
+    <div id="topright">
+      <div id="indices" class="period-bar" role="group" aria-label="index"></div>
+      <div id="lang" class="period-bar" role="group" aria-label="language"></div>
+    </div>
 
     <div id="topbar">
       <div id="periods" class="period-bar" role="group" aria-label="対象期間"></div>

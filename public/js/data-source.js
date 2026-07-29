@@ -11,11 +11,14 @@
 
 export const INDICES = ['NIKKEI', 'DOW30', 'NASDAQ100'];
 
-// Per-index display metadata (switcher label + legend/page title).
+// Per-index display metadata: switcher label, legend/page title per language,
+// and whether the constituent `name` is already English (US) or Japanese (Nikkei).
+// For Japanese-named indices the English view uses `nameEn` if present, else the
+// stock code.
 export const INDEX_META = {
-  NIKKEI:    { label: 'NIKKEI',     title: '日経平均225 3D ヒートマップ' },
-  DOW30:     { label: 'DOW30',      title: 'NYダウ工業株30種 3D ヒートマップ' },
-  NASDAQ100: { label: 'NASDAQ 100', title: 'NASDAQ 100 3D ヒートマップ' },
+  NIKKEI:    { label: 'NIKKEI',     namesEnglish: false, title: { ja: '日経平均225 3D ヒートマップ',    en: 'Nikkei 225 · 3D Heatmap' } },
+  DOW30:     { label: 'DOW30',      namesEnglish: true,  title: { ja: 'NYダウ工業株30種 3D ヒートマップ', en: 'Dow Jones 30 · 3D Heatmap' } },
+  NASDAQ100: { label: 'NASDAQ 100', namesEnglish: true,  title: { ja: 'NASDAQ 100 3D ヒートマップ',       en: 'Nasdaq 100 · 3D Heatmap' } },
 };
 
 export const CONFIG = {
