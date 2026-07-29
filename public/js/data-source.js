@@ -14,23 +14,26 @@ export const CONFIG = {
   endpoint: 'https://ni225-heatmap-proxy.kenta0117.workers.dev',
 };
 
-/** Load all periods. Returns { period: { asOf, constituents } }. */
+/**
+ * Load all periods. Returns { data: { period: { asOf, constituents } }, live: bool }
+ * where live=true means it came from the API (not the bundled sample fallback).
+ */
 export async function loadData() {
   if (CONFIG.endpoint) {
     try {
-      const res = await fetch(CONFIG.endpoint, { headers: { accept: 'application/json' } });
+      const res = await fetch(CONFIG.endpoint, { headers: { accept: 'application/json' }, cache: 'no-store' });
       if (!res.ok) throw new Error(`data endpoint responded ${res.status}`);
       const json = await res.json();
       if (json && json.error) throw new Error(`proxy error: ${json.error}`);
-      return normalize(json);
+      return { data: normalize(json), live: true };
     } catch (err) {
       // Don't break the page during setup — fall back to the bundled sample.
       console.warn('[ni225] live data unavailable, using bundled sample:', err.message);
-      if (typeof window !== 'undefined' && window.NI225_DATA) return window.NI225_DATA;
+      if (typeof window !== 'undefined' && window.NI225_DATA) return { data: window.NI225_DATA, live: false };
       throw err;
     }
   }
-  if (typeof window !== 'undefined' && window.NI225_DATA) return window.NI225_DATA;
+  if (typeof window !== 'undefined' && window.NI225_DATA) return { data: window.NI225_DATA, live: false };
   throw new Error('No data source configured (set CONFIG.endpoint or include data/ni225.js).');
 }
 
