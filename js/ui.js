@@ -63,18 +63,21 @@ export function createTooltip(parent) {
   };
 }
 
-// Wires up the transparency slider. `onChange` receives opacity in [0.2, 1].
+// Wires up the transparency slider. The slider value is TRANSPARENCY in %:
+// 0% = solid (opacity 1), 100% = maximally see-through (opacity MIN_OPACITY).
+// `onChange` receives the resulting bar opacity in (0,1].
+const MIN_OPACITY = 0.1;
 export function buildOpacityControl(el, onChange) {
   const input = el.querySelector('#opacity');
   const out = el.querySelector('#opacity-val');
   const apply = () => {
-    const pct = Math.round(+input.value);
-    out.textContent = pct + '%';
-    onChange(pct / 100);
+    const t = Math.round(+input.value);            // transparency %
+    out.textContent = t + '%';
+    onChange(1 - (t / 100) * (1 - MIN_OPACITY));    // → opacity
   };
   input.addEventListener('input', apply);
   apply();
-  return { set(pct) { input.value = String(pct); apply(); } };
+  return { set(t) { input.value = String(t); apply(); } };
 }
 
 export function buildLegend(el) {
