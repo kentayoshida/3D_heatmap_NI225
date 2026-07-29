@@ -28,30 +28,44 @@ treemap が一般的です。本プロジェクトはそこに **高さ（第3�
 
 ## 実行 / プレビュー
 
-依存を落とさず静的ファイルのみで動きます（ビルド不要）。
+依存を落とさず静的ファイルのみで動きます（ビルド不要）。配信物は `public/` 配下です。
 
 ```bash
-python3 -m http.server 8000
-# → http://localhost:8000/
+npx http-server public -p 8000 -c-1
+# → http://localhost:8000/   (-c-1 でキャッシュ無効。反映されない時に有効)
 ```
 
-Three.js は CDN 不達でも動くよう `lib/` に同梱（バージョン固定）しています。
+Three.js は CDN 不達でも動くよう `public/lib/` に同梱（バージョン固定）しています。
 
 ## 構成
 
 ```
-index.html            エントリ（importmap で three / OrbitControls を解決）
-css/style.css         UI（期間バー・凡例・ツールチップ）
-lib/                  three.module.js / OrbitControls.js（vendor）
-js/main.js            scene / camera / OrbitControls / ライト / 地面 / レンダーループ
-js/treemap.js         squarified treemap（業種→銘柄の2階層）
-js/heatmap.js         bar mesh・色・ラベル・期間切替アニメ
-js/color.js           騰落率(%) → 色
-js/ui.js              期間ボタン・ツールチップ・凡例・透明度スライダー
-js/data-source.js     データ読み込み層（サンプル / リモートAPI切替・JPX変換）
-data/ni225.js         サンプルデータ（全7期間 × 225銘柄）
+public/                配信物（Cloudflare Pages の出力ディレクトリ）
+  index.html           エントリ（importmap で three / OrbitControls を解決）
+  css/style.css        UI（期間バー・凡例・ツールチップ・透明度・向き）
+  lib/                 three.module.js / OrbitControls.js（vendor）
+  js/main.js           scene / camera / OrbitControls / ライト / 地面 / ループ
+  js/treemap.js        squarified treemap（業種→銘柄の2階層）
+  js/heatmap.js        bar mesh・色・ラベル・期間切替アニメ・透明度/X線・凹凸反転
+  js/color.js          騰落率(%) → 色
+  js/ui.js             期間ボタン・ツールチップ・凡例・透明度スライダー・向きトグル
+  js/data-source.js    データ読み込み層（サンプル / リモートAPI切替・JPX変換）
+  data/ni225.js        サンプルデータ（全7期間 × 225銘柄）
+  _headers             Cloudflare Pages のキャッシュ設定
 scripts/gen_sample.mjs サンプルデータ生成スクリプト
+server/                J-Quants V2 → 寄与度プロキシ（Cloudflare Worker）
 ```
+
+## デプロイ（Cloudflare Pages · Git連携）
+
+`public/` を配信します。Cloudflare Pages でこのリポジトリを接続し:
+
+- **Build command**: （空）
+- **Build output directory**: `public`
+- **Production branch**: 運用ブランチ（例: `main`）
+
+以後は push で自動デプロイ。カスタムドメインに `3dheatmap.markets-lab.com` を追加します。
+データAPI（Worker）は `server/` を参照。
 
 ## データの差し替え（実データ連携）
 
@@ -76,7 +90,7 @@ window.NI225_DATA = {
 サンプルの再生成:
 
 ```bash
-node scripts/gen_sample.mjs   # → data/ni225.js を出力
+node scripts/gen_sample.mjs   # → public/data/ni225.js を出力
 ```
 
 ### JPX API連携（実データ）
