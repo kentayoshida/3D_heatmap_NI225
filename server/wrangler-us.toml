@@ -1,0 +1,12 @@
+# Cloudflare Workers config for the US (Yahoo Finance) → 寄与度 proxy.
+# Deploy with an explicit config since this dir also holds the Nikkei worker:
+#   wrangler deploy --config wrangler-us.toml
+# No secret required (Yahoo Finance needs no API key).
+name = "us-heatmap-proxy"
+main = "us-worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# CORS allowlist (comma-separated). The matching request Origin is echoed back;
+# other sites' browser JS is blocked. Same origins as the Nikkei worker.
+ALLOW_ORIGIN = "https://3dheatmap.markets-lab.com,https://markets-lab.com,https://www.markets-lab.com,http://localhost:8000,http://127.0.0.1:8000"

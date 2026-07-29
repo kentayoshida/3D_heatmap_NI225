@@ -1,0 +1,763 @@
+{
+  "_note": "US index params for us-worker.js. Dow = price-weighted (weight = live price). Nasdaq = cap-weighted (weight = index %).",
+  "asOfParams": "2026-07-29",
+  "dow": {
+    "divisor": 0.16268,
+    "constituents": [
+      {
+        "code": "UNH",
+        "name": "UnitedHealth Group",
+        "sector": "Health Care"
+      },
+      {
+        "code": "GS",
+        "name": "Goldman Sachs",
+        "sector": "Financials"
+      },
+      {
+        "code": "MSFT",
+        "name": "Microsoft",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "HD",
+        "name": "Home Depot",
+        "sector": "Consumer Discretionary"
+      },
+      {
+        "code": "CAT",
+        "name": "Caterpillar",
+        "sector": "Industrials"
+      },
+      {
+        "code": "SHW",
+        "name": "Sherwin-Williams",
+        "sector": "Materials"
+      },
+      {
+        "code": "CRM",
+        "name": "Salesforce",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "V",
+        "name": "Visa",
+        "sector": "Financials"
+      },
+      {
+        "code": "AXP",
+        "name": "American Express",
+        "sector": "Financials"
+      },
+      {
+        "code": "AMGN",
+        "name": "Amgen",
+        "sector": "Health Care"
+      },
+      {
+        "code": "MCD",
+        "name": "McDonald's",
+        "sector": "Consumer Discretionary"
+      },
+      {
+        "code": "TRV",
+        "name": "Travelers",
+        "sector": "Financials"
+      },
+      {
+        "code": "JPM",
+        "name": "JPMorgan Chase",
+        "sector": "Financials"
+      },
+      {
+        "code": "IBM",
+        "name": "IBM",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "AAPL",
+        "name": "Apple",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "HON",
+        "name": "Honeywell",
+        "sector": "Industrials"
+      },
+      {
+        "code": "AMZN",
+        "name": "Amazon",
+        "sector": "Consumer Discretionary"
+      },
+      {
+        "code": "BA",
+        "name": "Boeing",
+        "sector": "Industrials"
+      },
+      {
+        "code": "PG",
+        "name": "Procter & Gamble",
+        "sector": "Consumer Staples"
+      },
+      {
+        "code": "JNJ",
+        "name": "Johnson & Johnson",
+        "sector": "Health Care"
+      },
+      {
+        "code": "CVX",
+        "name": "Chevron",
+        "sector": "Energy"
+      },
+      {
+        "code": "NVDA",
+        "name": "Nvidia",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "MMM",
+        "name": "3M",
+        "sector": "Industrials"
+      },
+      {
+        "code": "DIS",
+        "name": "Disney",
+        "sector": "Communication Services"
+      },
+      {
+        "code": "MRK",
+        "name": "Merck",
+        "sector": "Health Care"
+      },
+      {
+        "code": "WMT",
+        "name": "Walmart",
+        "sector": "Consumer Staples"
+      },
+      {
+        "code": "NKE",
+        "name": "Nike",
+        "sector": "Consumer Discretionary"
+      },
+      {
+        "code": "KO",
+        "name": "Coca-Cola",
+        "sector": "Consumer Staples"
+      },
+      {
+        "code": "CSCO",
+        "name": "Cisco",
+        "sector": "Information Technology"
+      },
+      {
+        "code": "VZ",
+        "name": "Verizon",
+        "sector": "Communication Services"
+      }
+    ]
+  },
+  "nasdaq": {
+    "constituents": [
+      {
+        "code": "AAPL",
+        "name": "Apple",
+        "sector": "Information Technology",
+        "weight": 9
+      },
+      {
+        "code": "NVDA",
+        "name": "Nvidia",
+        "sector": "Information Technology",
+        "weight": 8.6
+      },
+      {
+        "code": "MSFT",
+        "name": "Microsoft",
+        "sector": "Information Technology",
+        "weight": 8
+      },
+      {
+        "code": "AMZN",
+        "name": "Amazon",
+        "sector": "Consumer Discretionary",
+        "weight": 5.5
+      },
+      {
+        "code": "AVGO",
+        "name": "Broadcom",
+        "sector": "Information Technology",
+        "weight": 5
+      },
+      {
+        "code": "META",
+        "name": "Meta Platforms",
+        "sector": "Communication Services",
+        "weight": 4.5
+      },
+      {
+        "code": "TSLA",
+        "name": "Tesla",
+        "sector": "Consumer Discretionary",
+        "weight": 3
+      },
+      {
+        "code": "COST",
+        "name": "Costco Wholesale",
+        "sector": "Consumer Staples",
+        "weight": 2.7
+      },
+      {
+        "code": "GOOGL",
+        "name": "Alphabet A",
+        "sector": "Communication Services",
+        "weight": 2.5
+      },
+      {
+        "code": "NFLX",
+        "name": "Netflix",
+        "sector": "Communication Services",
+        "weight": 2.5
+      },
+      {
+        "code": "GOOG",
+        "name": "Alphabet C",
+        "sector": "Communication Services",
+        "weight": 2.4
+      },
+      {
+        "code": "TMUS",
+        "name": "T-Mobile US",
+        "sector": "Communication Services",
+        "weight": 1.5
+      },
+      {
+        "code": "AMD",
+        "name": "Advanced Micro Devices",
+        "sector": "Information Technology",
+        "weight": 1.4
+      },
+      {
+        "code": "PEP",
+        "name": "PepsiCo",
+        "sector": "Consumer Staples",
+        "weight": 1.4
+      },
+      {
+        "code": "LIN",
+        "name": "Linde",
+        "sector": "Materials",
+        "weight": 1.4
+      },
+      {
+        "code": "INTU",
+        "name": "Intuit",
+        "sector": "Information Technology",
+        "weight": 1.4
+      },
+      {
+        "code": "CSCO",
+        "name": "Cisco",
+        "sector": "Information Technology",
+        "weight": 1.3
+      },
+      {
+        "code": "PLTR",
+        "name": "Palantir Technologies",
+        "sector": "Information Technology",
+        "weight": 1.3
+      },
+      {
+        "code": "ISRG",
+        "name": "Intuitive Surgical",
+        "sector": "Health Care",
+        "weight": 1.2
+      },
+      {
+        "code": "BKNG",
+        "name": "Booking Holdings",
+        "sector": "Consumer Discretionary",
+        "weight": 1.2
+      },
+      {
+        "code": "ADBE",
+        "name": "Adobe",
+        "sector": "Information Technology",
+        "weight": 1.1
+      },
+      {
+        "code": "AMGN",
+        "name": "Amgen",
+        "sector": "Health Care",
+        "weight": 1.1
+      },
+      {
+        "code": "TXN",
+        "name": "Texas Instruments",
+        "sector": "Information Technology",
+        "weight": 1.1
+      },
+      {
+        "code": "QCOM",
+        "name": "Qualcomm",
+        "sector": "Information Technology",
+        "weight": 1.1
+      },
+      {
+        "code": "HON",
+        "name": "Honeywell",
+        "sector": "Industrials",
+        "weight": 1
+      },
+      {
+        "code": "CMCSA",
+        "name": "Comcast",
+        "sector": "Communication Services",
+        "weight": 1
+      },
+      {
+        "code": "AMAT",
+        "name": "Applied Materials",
+        "sector": "Information Technology",
+        "weight": 1
+      },
+      {
+        "code": "ADP",
+        "name": "Automatic Data Processing",
+        "sector": "Industrials",
+        "weight": 0.9
+      },
+      {
+        "code": "MU",
+        "name": "Micron Technology",
+        "sector": "Information Technology",
+        "weight": 0.9
+      },
+      {
+        "code": "PANW",
+        "name": "Palo Alto Networks",
+        "sector": "Information Technology",
+        "weight": 0.9
+      },
+      {
+        "code": "GILD",
+        "name": "Gilead Sciences",
+        "sector": "Health Care",
+        "weight": 0.8
+      },
+      {
+        "code": "VRTX",
+        "name": "Vertex Pharmaceuticals",
+        "sector": "Health Care",
+        "weight": 0.8
+      },
+      {
+        "code": "LRCX",
+        "name": "Lam Research",
+        "sector": "Information Technology",
+        "weight": 0.8
+      },
+      {
+        "code": "CRWD",
+        "name": "CrowdStrike",
+        "sector": "Information Technology",
+        "weight": 0.8
+      },
+      {
+        "code": "MELI",
+        "name": "MercadoLibre",
+        "sector": "Consumer Discretionary",
+        "weight": 0.8
+      },
+      {
+        "code": "ADI",
+        "name": "Analog Devices",
+        "sector": "Information Technology",
+        "weight": 0.7
+      },
+      {
+        "code": "KLAC",
+        "name": "KLA",
+        "sector": "Information Technology",
+        "weight": 0.7
+      },
+      {
+        "code": "SBUX",
+        "name": "Starbucks",
+        "sector": "Consumer Discretionary",
+        "weight": 0.7
+      },
+      {
+        "code": "CDNS",
+        "name": "Cadence Design Systems",
+        "sector": "Information Technology",
+        "weight": 0.7
+      },
+      {
+        "code": "INTC",
+        "name": "Intel",
+        "sector": "Information Technology",
+        "weight": 0.7
+      },
+      {
+        "code": "CEG",
+        "name": "Constellation Energy",
+        "sector": "Utilities",
+        "weight": 0.7
+      },
+      {
+        "code": "APP",
+        "name": "AppLovin",
+        "sector": "Information Technology",
+        "weight": 0.6
+      },
+      {
+        "code": "SNPS",
+        "name": "Synopsys",
+        "sector": "Information Technology",
+        "weight": 0.6
+      },
+      {
+        "code": "MDLZ",
+        "name": "Mondelez International",
+        "sector": "Consumer Staples",
+        "weight": 0.6
+      },
+      {
+        "code": "CTAS",
+        "name": "Cintas",
+        "sector": "Industrials",
+        "weight": 0.6
+      },
+      {
+        "code": "MAR",
+        "name": "Marriott International",
+        "sector": "Consumer Discretionary",
+        "weight": 0.5
+      },
+      {
+        "code": "ORLY",
+        "name": "O'Reilly Automotive",
+        "sector": "Consumer Discretionary",
+        "weight": 0.5
+      },
+      {
+        "code": "CSX",
+        "name": "CSX",
+        "sector": "Industrials",
+        "weight": 0.5
+      },
+      {
+        "code": "PYPL",
+        "name": "PayPal Holdings",
+        "sector": "Financials",
+        "weight": 0.5
+      },
+      {
+        "code": "ABNB",
+        "name": "Airbnb",
+        "sector": "Consumer Discretionary",
+        "weight": 0.5
+      },
+      {
+        "code": "FTNT",
+        "name": "Fortinet",
+        "sector": "Information Technology",
+        "weight": 0.5
+      },
+      {
+        "code": "WDAY",
+        "name": "Workday",
+        "sector": "Information Technology",
+        "weight": 0.5
+      },
+      {
+        "code": "ADSK",
+        "name": "Autodesk",
+        "sector": "Information Technology",
+        "weight": 0.5
+      },
+      {
+        "code": "ROP",
+        "name": "Roper Technologies",
+        "sector": "Information Technology",
+        "weight": 0.5
+      },
+      {
+        "code": "MRVL",
+        "name": "Marvell Technology",
+        "sector": "Information Technology",
+        "weight": 0.5
+      },
+      {
+        "code": "REGN",
+        "name": "Regeneron Pharmaceuticals",
+        "sector": "Health Care",
+        "weight": 0.5
+      },
+      {
+        "code": "DASH",
+        "name": "DoorDash",
+        "sector": "Consumer Discretionary",
+        "weight": 0.5
+      },
+      {
+        "code": "NXPI",
+        "name": "NXP Semiconductors",
+        "sector": "Information Technology",
+        "weight": 0.4
+      },
+      {
+        "code": "AEP",
+        "name": "American Electric Power",
+        "sector": "Utilities",
+        "weight": 0.4
+      },
+      {
+        "code": "CPRT",
+        "name": "Copart",
+        "sector": "Industrials",
+        "weight": 0.4
+      },
+      {
+        "code": "PCAR",
+        "name": "Paccar",
+        "sector": "Industrials",
+        "weight": 0.4
+      },
+      {
+        "code": "MNST",
+        "name": "Monster Beverage",
+        "sector": "Consumer Staples",
+        "weight": 0.4
+      },
+      {
+        "code": "TTD",
+        "name": "Trade Desk",
+        "sector": "Communication Services",
+        "weight": 0.4
+      },
+      {
+        "code": "CHTR",
+        "name": "Charter Communications",
+        "sector": "Communication Services",
+        "weight": 0.4
+      },
+      {
+        "code": "ROST",
+        "name": "Ross Stores",
+        "sector": "Consumer Discretionary",
+        "weight": 0.4
+      },
+      {
+        "code": "KDP",
+        "name": "Keurig Dr Pepper",
+        "sector": "Consumer Staples",
+        "weight": 0.4
+      },
+      {
+        "code": "PAYX",
+        "name": "Paychex",
+        "sector": "Industrials",
+        "weight": 0.4
+      },
+      {
+        "code": "FAST",
+        "name": "Fastenal",
+        "sector": "Industrials",
+        "weight": 0.4
+      },
+      {
+        "code": "ODFL",
+        "name": "Old Dominion Freight Line",
+        "sector": "Industrials",
+        "weight": 0.4
+      },
+      {
+        "code": "DDOG",
+        "name": "Datadog",
+        "sector": "Information Technology",
+        "weight": 0.4
+      },
+      {
+        "code": "ARM",
+        "name": "Arm Holdings",
+        "sector": "Information Technology",
+        "weight": 0.4
+      },
+      {
+        "code": "FANG",
+        "name": "Diamondback Energy",
+        "sector": "Energy",
+        "weight": 0.3
+      },
+      {
+        "code": "EA",
+        "name": "Electronic Arts",
+        "sector": "Communication Services",
+        "weight": 0.3
+      },
+      {
+        "code": "VRSK",
+        "name": "Verisk Analytics",
+        "sector": "Industrials",
+        "weight": 0.3
+      },
+      {
+        "code": "CTSH",
+        "name": "Cognizant Technology",
+        "sector": "Information Technology",
+        "weight": 0.3
+      },
+      {
+        "code": "EXC",
+        "name": "Exelon",
+        "sector": "Utilities",
+        "weight": 0.3
+      },
+      {
+        "code": "XEL",
+        "name": "Xcel Energy",
+        "sector": "Utilities",
+        "weight": 0.3
+      },
+      {
+        "code": "BKR",
+        "name": "Baker Hughes",
+        "sector": "Energy",
+        "weight": 0.3
+      },
+      {
+        "code": "KHC",
+        "name": "Kraft Heinz",
+        "sector": "Consumer Staples",
+        "weight": 0.3
+      },
+      {
+        "code": "CCEP",
+        "name": "Coca-Cola Europacific",
+        "sector": "Consumer Staples",
+        "weight": 0.3
+      },
+      {
+        "code": "TEAM",
+        "name": "Atlassian",
+        "sector": "Information Technology",
+        "weight": 0.3
+      },
+      {
+        "code": "IDXX",
+        "name": "Idexx Laboratories",
+        "sector": "Health Care",
+        "weight": 0.3
+      },
+      {
+        "code": "ZS",
+        "name": "Zscaler",
+        "sector": "Information Technology",
+        "weight": 0.3
+      },
+      {
+        "code": "ON",
+        "name": "ON Semiconductor",
+        "sector": "Information Technology",
+        "weight": 0.3
+      },
+      {
+        "code": "GEHC",
+        "name": "GE HealthCare",
+        "sector": "Health Care",
+        "weight": 0.3
+      },
+      {
+        "code": "DXCM",
+        "name": "Dexcom",
+        "sector": "Health Care",
+        "weight": 0.3
+      },
+      {
+        "code": "TTWO",
+        "name": "Take-Two Interactive",
+        "sector": "Communication Services",
+        "weight": 0.3
+      },
+      {
+        "code": "LULU",
+        "name": "Lululemon Athletica",
+        "sector": "Consumer Discretionary",
+        "weight": 0.3
+      },
+      {
+        "code": "CDW",
+        "name": "CDW",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "BIIB",
+        "name": "Biogen",
+        "sector": "Health Care",
+        "weight": 0.2
+      },
+      {
+        "code": "MDB",
+        "name": "MongoDB",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "GFS",
+        "name": "GlobalFoundries",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "ANSS",
+        "name": "Ansys",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "ILMN",
+        "name": "Illumina",
+        "sector": "Health Care",
+        "weight": 0.2
+      },
+      {
+        "code": "WBD",
+        "name": "Warner Bros. Discovery",
+        "sector": "Communication Services",
+        "weight": 0.2
+      },
+      {
+        "code": "SMCI",
+        "name": "Super Micro Computer",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "MCHP",
+        "name": "Microchip Technology",
+        "sector": "Information Technology",
+        "weight": 0.2
+      },
+      {
+        "code": "DLTR",
+        "name": "Dollar Tree",
+        "sector": "Consumer Discretionary",
+        "weight": 0.2
+      },
+      {
+        "code": "MSTR",
+        "name": "MicroStrategy",
+        "sector": "Information Technology",
+        "weight": 0.3
+      },
+      {
+        "code": "WBA",
+        "name": "Walgreens Boots Alliance",
+        "sector": "Consumer Staples",
+        "weight": 0.1
+      }
+    ]
+  }
+}
