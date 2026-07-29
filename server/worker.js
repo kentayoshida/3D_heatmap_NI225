@@ -27,10 +27,7 @@ let _payload = { data: null, exp: 0 };
 
 export default {
   async fetch(request, env) {
-    const cors = {
-      'access-control-allow-origin': env.ALLOW_ORIGIN || '*',
-      'access-control-allow-methods': 'GET, OPTIONS',
-    };
+    const cors = corsHeaders(request, env);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     try {
       const now = Date.now();
@@ -47,6 +44,24 @@ export default {
     }
   },
 };
+
+// ---- CORS -------------------------------------------------------------------
+// ALLOW_ORIGIN is a comma-separated allowlist (or '*'). The matching request
+// Origin is echoed back so multiple sites (prod + localhost dev) work, while any
+// other site's browser JS is blocked. Public read-only data, so this just limits
+// who can hotlink the endpoint from a browser.
+function corsHeaders(request, env) {
+  const allow = (env.ALLOW_ORIGIN || '*').split(',').map((s) => s.trim()).filter(Boolean);
+  const origin = request.headers.get('Origin') || '';
+  const h = { 'access-control-allow-methods': 'GET, OPTIONS' };
+  if (allow.includes('*')) {
+    h['access-control-allow-origin'] = '*';
+  } else {
+    h['vary'] = 'Origin';
+    h['access-control-allow-origin'] = allow.includes(origin) ? origin : allow[0] || 'null';
+  }
+  return h;
+}
 
 // ---- assemble all periods ---------------------------------------------------
 async function buildAllPeriods(env) {
@@ -153,4 +168,4 @@ function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-dig
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapePeriod, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray };
+export const _internals = { shapePeriod, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray, corsHeaders };

@@ -45,6 +45,26 @@ wrangler deploy
 > V2の日次株価は `GET https://api.jquants.com/v2/equities/bars/daily?date=YYYYMMDD`
 > （ヘッダ `x-api-key`）。フィールド名（`AdjC` 等）は環境差に強い寛容パースで取り込みます。
 
+### CORS（許可オリジンの限定）
+
+`wrangler.toml` の `ALLOW_ORIGIN` はカンマ区切りの許可リストです。リクエストの
+`Origin` が一致した場合のみそのオリジンを返し、それ以外のサイトのブラウザJSからの
+取得をブロックします（公開データなので、主目的はホットリンク抑止）。
+
+```toml
+# 本番ドメイン + ローカル開発を許可（埋め込み先が別サブドメインなら追加）
+ALLOW_ORIGIN = "https://markets-lab.com,https://www.markets-lab.com,http://localhost:8000,http://127.0.0.1:8000"
+```
+
+変更後は再デプロイで反映：
+
+```bash
+cd server && wrangler deploy
+```
+
+> 埋め込み先のオリジンが上記と異なる場合（別サブドメイン等）は必ず追加してください。
+> 一致しないと本番でCORSに弾かれ、フロントはサンプルデータにフォールバックします。
+
 デプロイ後、フロントの `js/data-source.js` を設定:
 
 ```js
