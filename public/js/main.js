@@ -2,17 +2,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, createTooltip, buildLegend, buildOpacityControl, buildInvertToggle } from './ui.js';
-import { loadData, CONFIG } from './data-source.js';
+import { buildPeriodBar, buildIndexBar, createTooltip, buildLegend, setLegendTitle, buildOpacityControl, buildInvertToggle } from './ui.js';
+import { loadData, CONFIG, INDICES, INDEX_META } from './data-source.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const W = 100, D = 70;         // base-plane extent (X, Z)
 const REFRESH_MS = 15 * 60 * 1000; // poll for newer end-of-day data every 15 min
 
-// Bundled sample by default; point data-source.js CONFIG.endpoint at a backend
-// (JPX-fed) to go live. Top-level await keeps the rest of setup unchanged.
-let DATA, live;
-({ data: DATA, live } = await loadData());
+// One index shown at a time; others are loaded lazily on first switch and cached.
+let currentIndex = 'NIKKEI';
+const LOADED = new Map(); // index -> { data, live }
+
+// Bundled sample by default; point data-source.js CONFIG.endpoints at backends to
+// go live. Top-level await keeps the rest of setup unchanged.
+{
+  const res = await loadData(currentIndex);
+  LOADED.set(currentIndex, res);
+}
+let DATA = LOADED.get(currentIndex).data;
+let live = LOADED.get(currentIndex).live;
 
 const stage = document.getElementById('stage');
 
@@ -66,7 +74,7 @@ let currentPeriod = '1D';
 heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
 
 // ---- UI ---------------------------------------------------------------------
-buildLegend(document.getElementById('legend'));
+buildLegend(document.getElementById('legend'), INDEX_META[currentIndex].title);
 buildOpacityControl(document.getElementById('controls'), (t) => heatmap.setTransparency(t));
 buildInvertToggle(document.getElementById('controls'), (inv) => {
   heatmap.setInvert(inv);
@@ -75,6 +83,8 @@ buildInvertToggle(document.getElementById('controls'), (inv) => {
 });
 const tooltip = createTooltip(document.body);
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
+const indexBar = buildIndexBar(document.getElementById('indices'), INDICES, currentIndex, INDEX_META, setIndex);
+applyIndexChrome();
 updateAsOf();
 
 function setPeriod(p) {
@@ -84,28 +94,65 @@ function setPeriod(p) {
   updateAsOf();
 }
 
+// Switch the displayed index. Loads (and caches) the index's data on first use,
+// keeping the currently selected period. Falls back to the bundled sample if the
+// live endpoint is unreachable (handled inside loadData).
+async function setIndex(idx) {
+  if (idx === currentIndex || !INDEX_META[idx]) return;
+  currentIndex = idx;
+  applyIndexChrome();
+  let res = LOADED.get(idx);
+  if (!res) {
+    try {
+      res = await loadData(idx);
+      LOADED.set(idx, res);
+    } catch (err) {
+      console.warn(`[heatmap] failed to load ${idx}:`, err.message);
+      return;
+    }
+  }
+  if (currentIndex !== idx) return; // a newer switch won the race
+  DATA = res.data;
+  live = res.live;
+  if (!DATA[currentPeriod]) currentPeriod = PERIODS[0];
+  heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
+  updateAsOf();
+}
+
+// Title chrome that depends on the selected index (legend + browser tab).
+function applyIndexChrome() {
+  const title = INDEX_META[currentIndex].title;
+  setLegendTitle(title);
+  document.title = title;
+  indexBar.setActive(currentIndex);
+}
+
 function updateAsOf() {
   const el = document.getElementById('asof');
   if (!el) return;
   const date = String(DATA[currentPeriod]?.asOf || '').slice(0, 10); // YYYY-MM-DD
-  el.textContent = `データ基準日: ${date || '—'}（JST）${live ? '' : ' ・サンプル'}`;
+  const tz = currentIndex === 'NIKKEI' ? 'JST' : 'ET';
+  el.textContent = `データ基準日: ${date || '—'}（${tz}）${live ? '' : ' ・サンプル'}`;
 }
 
 // ---- auto-refresh: pick up new end-of-day data without a manual reload ------
 async function refresh() {
   if (document.visibilityState === 'hidden') return; // skip while tab is backgrounded
+  const idx = currentIndex;
   try {
-    const { data, live: isLive } = await loadData();
-    const changed = data[currentPeriod]?.asOf !== DATA[currentPeriod]?.asOf;
-    DATA = data;
-    live = isLive;
+    const res = await loadData(idx);
+    LOADED.set(idx, res);
+    if (currentIndex !== idx) return; // user switched indices mid-fetch
+    const changed = res.data[currentPeriod]?.asOf !== DATA[currentPeriod]?.asOf;
+    DATA = res.data;
+    live = res.live;
     updateAsOf();
     if (changed) heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
   } catch (err) {
-    console.warn('[ni225] refresh failed, keeping current data:', err.message);
+    console.warn('[heatmap] refresh failed, keeping current data:', err.message);
   }
 }
-if (CONFIG.endpoint) setInterval(refresh, REFRESH_MS);
+if (Object.values(CONFIG.endpoints).some(Boolean)) setInterval(refresh, REFRESH_MS);
 
 // ---- hover picking ----------------------------------------------------------
 const raycaster = new THREE.Raycaster();
@@ -157,4 +204,4 @@ function animate() {
 animate();
 
 // expose for debugging / e2e checks
-window.__heatmap = { scene, camera, controls, heatmap, setPeriod, PERIODS };
+window.__heatmap = { scene, camera, controls, heatmap, setPeriod, setIndex, PERIODS, INDICES, get index() { return currentIndex; } };

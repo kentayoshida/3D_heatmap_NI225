@@ -3,25 +3,36 @@
 import { changeColorCss } from './color.js';
 
 export function buildPeriodBar(el, periods, current, onSelect) {
+  return buildPillBar(el, periods.map((p) => [p, p]), current, onSelect);
+}
+
+// Index switcher (NIKKEI / DOW30 / NASDAQ 100). `indices` are keys; `meta` maps
+// each key to { label }. Same pill styling as the period bar.
+export function buildIndexBar(el, indices, current, meta, onSelect) {
+  return buildPillBar(el, indices.map((k) => [k, (meta[k] && meta[k].label) || k]), current, onSelect);
+}
+
+// Shared pill-button group. `items` = [[value, label], ...].
+function buildPillBar(el, items, current, onSelect) {
   el.innerHTML = '';
   const buttons = new Map();
-  for (const p of periods) {
+  for (const [value, label] of items) {
     const b = document.createElement('button');
     b.className = 'period-btn';
-    b.textContent = p;
-    b.setAttribute('aria-pressed', String(p === current));
-    if (p === current) b.classList.add('active');
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(value === current));
+    if (value === current) b.classList.add('active');
     b.addEventListener('click', () => {
       if (b.classList.contains('active')) return;
-      setActive(p);
-      onSelect(p);
+      setActive(value);
+      onSelect(value);
     });
     el.appendChild(b);
-    buttons.set(p, b);
+    buttons.set(value, b);
   }
-  function setActive(p) {
+  function setActive(value) {
     for (const [key, btn] of buttons) {
-      const on = key === p;
+      const on = key === value;
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', String(on));
     }
@@ -95,14 +106,20 @@ export function buildInvertToggle(el, onChange) {
   return { get() { return inverted; } };
 }
 
-export function buildLegend(el) {
+export function buildLegend(el, title = '3D ヒートマップ') {
   el.innerHTML =
-    `<div class="lg-title">日経平均 3D ヒートマップ</div>` +
+    `<div class="lg-title" id="lg-title">${escapeHtml(title)}</div>` +
     `<div class="lg-enc" id="lg-dir"><b>高さ</b> = 騰落率（0%基準・上=プラス/下=マイナス）</div>` +
     `<div class="lg-enc"><b>面積</b> = 寄与度</div>` +
     `<div class="lg-scale"><span class="down">下落</span>` +
     `<span class="lg-grad"></span><span class="up">上昇</span></div>` +
     `<div class="lg-hint">ドラッグで回転・ホイールで拡大縮小</div>`;
+}
+
+// Update just the legend title (on index switch) without rebuilding the panel.
+export function setLegendTitle(title) {
+  const el = document.getElementById('lg-title');
+  if (el) el.textContent = title;
 }
 
 function escapeHtml(s) {

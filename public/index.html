@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>日経平均 3D ヒートマップ</title>
+  <title>3D 株価指数ヒートマップ</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0e14'/%3E%3Crect x='2' y='7' width='3' height='7' fill='%23f5443a'/%3E%3Crect x='6.5' y='3' width='3' height='11' fill='%2322d367'/%3E%3Crect x='11' y='9' width='3' height='5' fill='%23f5443a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./css/style.css" />
 </head>
@@ -26,6 +26,8 @@
       </div>
     </div>
 
+    <div id="indices" class="period-bar" role="group" aria-label="対象指数"></div>
+
     <div id="topbar">
       <div id="periods" class="period-bar" role="group" aria-label="対象期間"></div>
       <div id="asof" class="asof"></div>
@@ -42,8 +44,11 @@
   }
   </script>
 
-  <!-- Data layer (swap this file for real data with the same shape) -->
+  <!-- Sample fallbacks (window.HEATMAP_SAMPLE[index]); live data comes from the
+       proxies configured in js/data-source.js. Regenerate via scripts/gen_sample*.mjs -->
   <script src="./data/ni225.js"></script>
+  <script src="./data/dow30.js"></script>
+  <script src="./data/nasdaq100.js"></script>
 
   <script type="module" src="./js/main.js"></script>
 </body>
