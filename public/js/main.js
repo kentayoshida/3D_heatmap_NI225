@@ -3,14 +3,16 @@ import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
 import { buildPeriodBar, createTooltip, buildLegend, buildOpacityControl, buildInvertToggle } from './ui.js';
-import { loadData } from './data-source.js';
+import { loadData, CONFIG } from './data-source.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const W = 100, D = 70;         // base-plane extent (X, Z)
+const REFRESH_MS = 15 * 60 * 1000; // poll for newer end-of-day data every 15 min
 
 // Bundled sample by default; point data-source.js CONFIG.endpoint at a backend
 // (JPX-fed) to go live. Top-level await keeps the rest of setup unchanged.
-const DATA = await loadData();
+let DATA, live;
+({ data: DATA, live } = await loadData());
 
 const stage = document.getElementById('stage');
 
@@ -84,8 +86,26 @@ function setPeriod(p) {
 
 function updateAsOf() {
   const el = document.getElementById('asof');
-  if (el) el.textContent = 'as of ' + (DATA[currentPeriod].asOf || '').replace('T', ' ').replace(/\+.*/, '') + ' (sample)';
+  if (!el) return;
+  const date = String(DATA[currentPeriod]?.asOf || '').slice(0, 10); // YYYY-MM-DD
+  el.textContent = `データ基準日: ${date || '—'}（JST）${live ? '' : ' ・サンプル'}`;
 }
+
+// ---- auto-refresh: pick up new end-of-day data without a manual reload ------
+async function refresh() {
+  if (document.visibilityState === 'hidden') return; // skip while tab is backgrounded
+  try {
+    const { data, live: isLive } = await loadData();
+    const changed = data[currentPeriod]?.asOf !== DATA[currentPeriod]?.asOf;
+    DATA = data;
+    live = isLive;
+    updateAsOf();
+    if (changed) heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
+  } catch (err) {
+    console.warn('[ni225] refresh failed, keeping current data:', err.message);
+  }
+}
+if (CONFIG.endpoint) setInterval(refresh, REFRESH_MS);
 
 // ---- hover picking ----------------------------------------------------------
 const raycaster = new THREE.Raycaster();

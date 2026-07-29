@@ -76,7 +76,7 @@ async function buildAllPeriods(env) {
   const out = {};
   for (const p of PERIODS) {
     const base = await quotesOnOrBefore(baseDates[p], key);
-    out[p] = shapePeriod(latest.map, base.map);
+    out[p] = shapePeriod(latest.map, base.map, latest.date);
   }
   return out;
 }
@@ -84,7 +84,7 @@ async function buildAllPeriods(env) {
 // ---- 寄与度 math ------------------------------------------------------------
 // close/base use the adjustment close (split-adjusted). contribution over the
 // period is approximated as PAF × (close − base) / current-divisor (index points).
-function shapePeriod(latestMap, baseMap) {
+function shapePeriod(latestMap, baseMap, asOfDate) {
   const divisor = PARAMS.divisor;
   const constituents = PARAMS.constituents.map((c) => {
     const c4 = code4(c.code);
@@ -100,7 +100,8 @@ function shapePeriod(latestMap, baseMap) {
       contribution: round2(((c.paf ?? 1) * diff) / divisor),
     };
   });
-  return { asOf: new Date().toISOString(), constituents };
+  // asOf = the latest trading date the data reflects (JST), not the fetch time.
+  return { asOf: asOfDate ? fmtDash(asOfDate) : new Date().toISOString().slice(0, 10), constituents };
 }
 
 // ---- J-Quants V2: daily bars for a date (all stocks) → Map<code4, adjClose> --
@@ -163,6 +164,9 @@ function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
 function addMonths(d, n) { const x = new Date(d.getTime()); x.setUTCMonth(x.getUTCMonth() + n); return x; }
 function fmt(d) { // YYYYMMDD (V2 date param format)
   return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+function fmtDash(d) { // YYYY-MM-DD (display)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-digit (4-digit + '0')
 const round2 = (x) => Math.round(x * 100) / 100;
