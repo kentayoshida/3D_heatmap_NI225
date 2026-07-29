@@ -67,7 +67,7 @@ html, body {
 }
 .ctl-row { display: flex; align-items: center; gap: 10px; }
 .ctl-label { color: var(--text); font-weight: 600; }
-.ctl-val { color: var(--muted); width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.ctl-val { color: var(--muted); min-width: 62px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ctl-slider {
   -webkit-appearance: none;
   appearance: none;

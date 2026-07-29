@@ -65,7 +65,7 @@ heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
 
 // ---- UI ---------------------------------------------------------------------
 buildLegend(document.getElementById('legend'));
-buildOpacityControl(document.getElementById('controls'), (v) => heatmap.setOpacity(v));
+buildOpacityControl(document.getElementById('controls'), (t) => heatmap.setTransparency(t));
 const tooltip = createTooltip(document.body);
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
 updateAsOf();

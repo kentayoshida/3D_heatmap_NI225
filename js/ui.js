@@ -64,16 +64,16 @@ export function createTooltip(parent) {
 }
 
 // Wires up the transparency slider. The slider value is TRANSPARENCY in %:
-// 0% = solid (opacity 1), 100% = maximally see-through (opacity MIN_OPACITY).
-// `onChange` receives the resulting bar opacity in (0,1].
-const MIN_OPACITY = 0.07;
+// 0% = solid, higher = more see-through, top of the range = X-ray (outline only).
+// `onChange` receives the transparency fraction in [0,1]; the heatmap maps it to
+// fill opacity / X-ray mode.
 export function buildOpacityControl(el, onChange) {
   const input = el.querySelector('#opacity');
   const out = el.querySelector('#opacity-val');
   const apply = () => {
-    const t = Math.round(+input.value);            // transparency %
-    out.textContent = t + '%';
-    onChange(1 - (t / 100) * (1 - MIN_OPACITY));    // → opacity
+    const t = Math.round(+input.value);   // transparency %
+    out.textContent = t >= 85 ? `${t}% · X線` : `${t}%`;
+    onChange(t / 100);
   };
   input.addEventListener('input', apply);
   apply();

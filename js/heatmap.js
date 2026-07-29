@@ -13,6 +13,9 @@ const H_MIN = 0.35;     // floor height so ~0% bars are still a visible slab
 const H_SPAN = 22;      // world height of a fully-saturated bar
 const H_OVER = 1.35;    // let outliers beyond the cap overshoot a little
 const TWEEN_DUR = 0.7;  // seconds
+const FILL_MIN = 0.07;          // fill opacity at the top of the glass range
+const XRAY_AT = 0.85;           // slider fraction at/above which X-ray (outline) mode kicks in
+const XRAY_FACE_OPACITY = 0.045; // faint faces kept in X-ray so silhouettes/hover remain
 
 const lerp = (a, b, k) => a + (b - a) * k;
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -25,28 +28,47 @@ export class Heatmap {
     this.group = new THREE.Group();
     scene.add(this.group);
     this.boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    this.edgeGeo = new THREE.EdgesGeometry(this.boxGeo); // shared unit-box outline
     this.meshes = [];            // pickable bar meshes
     this.byCode = new Map();
     this.labelGroup = new THREE.Group();
     this.group.add(this.labelGroup);
     this.cap = 3;
-    this.opacity = 1;
+    this.opacity = 1;      // current fill opacity
+    this.transparency = 0; // slider fraction [0,1]
+    this.xray = false;     // wireframe (outline-only) mode
     this.highlighted = null;
   }
 
   get pickables() { return this.meshes; }
 
-  /** User-adjustable bar transparency. v in [0,1] (1 = opaque). */
-  setOpacity(v) {
-    this.opacity = v;
-    for (const m of this.meshes) this._applyOpacity(m);
+  /**
+   * Transparency slider handler. t in [0,1]:
+   *   0            → solid fill
+   *   up to XRAY_AT → progressively transparent glass
+   *   ≥ XRAY_AT     → X-ray: faces nearly gone, only colored outlines remain
+   * so back bars stay visible even in dense, zoomed-in views.
+   */
+  setTransparency(t) {
+    this.transparency = t;
+    this.xray = t >= XRAY_AT;
+    this.opacity = 1 - t * (1 - FILL_MIN);
+    for (const m of this.meshes) this._applyLook(m);
   }
 
-  _applyOpacity(m) {
-    const translucent = this.opacity < 0.999;
-    m.material.opacity = this.opacity;
-    m.material.transparent = translucent;
-    m.material.depthWrite = !translucent; // see-through when translucent
+  _applyLook(m) {
+    if (this.xray) {
+      m.material.opacity = XRAY_FACE_OPACITY;
+      m.material.transparent = true;
+      m.material.depthWrite = false;
+      if (m._edges) m._edges.visible = true;
+    } else {
+      const translucent = this.opacity < 0.999;
+      m.material.opacity = this.opacity;
+      m.material.transparent = translucent;
+      m.material.depthWrite = !translucent; // see-through when translucent
+      if (m._edges) m._edges.visible = false;
+    }
   }
 
   _cap(constituents) {
@@ -72,6 +94,7 @@ export class Heatmap {
       if (!targets.has(m.userData.code)) {
         this.group.remove(m);
         m.material.dispose();
+        if (m._edges) m._edges.material.dispose();
         this.meshes.splice(i, 1);
         this.byCode.delete(m.userData.code);
       }
@@ -90,12 +113,17 @@ export class Heatmap {
         m = new THREE.Mesh(this.boxGeo, new THREE.MeshLambertMaterial({ color }));
         m.scale.set(w, 0.01, d);      // grow in from flat
         m.position.set(s.x, 0, s.z);
+        // colored outline (child → inherits the bar's scale/position), for X-ray mode
+        const edges = new THREE.LineSegments(this.edgeGeo, new THREE.LineBasicMaterial({ color: color.clone(), transparent: true, opacity: 0.95 }));
+        edges.visible = false;
+        m.add(edges);
+        m._edges = edges;
         this.group.add(m);
         this.meshes.push(m);
         this.byCode.set(s.code, m);
       }
       m.userData = { ...s, cap, baseColor: color.clone() };
-      this._applyOpacity(m);
+      this._applyLook(m);
 
       if (animate) {
         m._tween = {
@@ -110,6 +138,7 @@ export class Heatmap {
         m.scale.set(to.sx, to.sy, to.sz);
         m.position.set(to.px, to.py, to.pz);
         m.material.color.copy(color);
+        m._edges.material.color.copy(color);
         m._tween = null;
       }
     }
@@ -130,8 +159,10 @@ export class Heatmap {
       const { from, to } = tw;
       m.scale.set(lerp(from.sx, to.sx, k), lerp(from.sy, to.sy, k), lerp(from.sz, to.sz, k));
       m.position.set(lerp(from.px, to.px, k), lerp(from.py, to.py, k), lerp(from.pz, to.pz, k));
-      if (m !== this.highlighted) m.material.color.copy(from.color).lerp(to.color, k);
-      m.userData.baseColor = from.color.clone().lerp(to.color, k);
+      const cur = from.color.clone().lerp(to.color, k);
+      if (m !== this.highlighted) m.material.color.copy(cur);
+      if (m._edges) m._edges.material.color.copy(cur);
+      m.userData.baseColor = cur;
       if (tw.t >= 1) m._tween = null;
     }
   }
