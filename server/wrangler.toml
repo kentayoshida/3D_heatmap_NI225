@@ -10,7 +10,7 @@ compatibility_date = "2025-01-01"
 # other sites' browser JS is blocked. Includes localhost for local dev.
 # Adjust to your real embedding origin(s) — add subdomains if the iframe is hosted
 # somewhere other than https://markets-lab.com.
-ALLOW_ORIGIN = "https://markets-lab.com,https://www.markets-lab.com,http://localhost:8000,http://127.0.0.1:8000"
+ALLOW_ORIGIN = "https://3dheatmap.markets-lab.com,https://markets-lab.com,https://www.markets-lab.com,http://localhost:8000,http://127.0.0.1:8000"
 
 # Secret set via `wrangler secret put` (do NOT put it here):
 #   JQUANTS_API_KEY
