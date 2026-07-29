@@ -66,7 +66,7 @@ export function createTooltip(parent) {
 // Wires up the transparency slider. The slider value is TRANSPARENCY in %:
 // 0% = solid (opacity 1), 100% = maximally see-through (opacity MIN_OPACITY).
 // `onChange` receives the resulting bar opacity in (0,1].
-const MIN_OPACITY = 0.1;
+const MIN_OPACITY = 0.07;
 export function buildOpacityControl(el, onChange) {
   const input = el.querySelector('#opacity');
   const out = el.querySelector('#opacity-val');
