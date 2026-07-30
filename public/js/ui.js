@@ -152,26 +152,35 @@ export function buildShareControls(el, { strings, onCamera, onX, onLine, onCopy 
 
   const row = document.createElement('div');
   row.className = 'share-row';
+
+  // One busy guard across every share button — capturing a snapshot is async, so
+  // block re-entry (and disable the buttons) until it settles.
+  let busy = false;
+  const allButtons = [];
+  const guard = (btn, handler) => {
+    allButtons.push(btn);
+    btn.addEventListener('click', async () => {
+      if (busy || !handler) return;
+      busy = true;
+      for (const b of allButtons) b.disabled = true;
+      try { await handler(); } finally { busy = false; for (const b of allButtons) b.disabled = false; }
+    });
+  };
+
   const mk = (label, title, handler) => {
     const b = document.createElement('button');
     b.className = 'share-mini';
     b.type = 'button';
     b.textContent = label;
     b.title = title;
-    b.addEventListener('click', () => handler && handler());
+    guard(b, handler);
     return b;
   };
+
+  guard(cam, onCamera);
   row.appendChild(mk(s.shareX, 'X', onX));
   row.appendChild(mk(s.shareLine, 'LINE', onLine));
   row.appendChild(mk('🔗', s.shareCopy, onCopy));
-
-  let busy = false;
-  cam.addEventListener('click', async () => {
-    if (busy || !onCamera) return;
-    busy = true;
-    cam.disabled = true;
-    try { await onCamera(); } finally { busy = false; cam.disabled = false; }
-  });
 
   el.appendChild(cam);
   el.appendChild(row);
