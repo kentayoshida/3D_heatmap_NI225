@@ -26,6 +26,8 @@ export const UI = {
     toastCopied: 'リンクをコピーしました', toastFailed: '共有に失敗しました',
     // timeline animation
     tlLabel: '直近5営業日', tlPlay: '再生', tlPause: '一時停止', tlDay: '日次',
+    // loading overlay
+    loading: '読み込み中', loadingHint: '初回はデータ取得に時間がかかる場合があります', sec: '秒',
   },
   en: {
     langLabel: 'EN',

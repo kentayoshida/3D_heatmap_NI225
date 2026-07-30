@@ -185,6 +185,31 @@ html, body {
 .up { color: var(--up); }
 .down { color: var(--down); }
 
+/* ---- loading overlay ---- */
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity .4s ease;
+}
+#loading.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+.ld-box { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 0 24px; }
+.ld-spinner {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(120, 140, 190, 0.25);
+  border-top-color: var(--accent);
+  animation: ld-spin 0.9s linear infinite;
+}
+@keyframes ld-spin { to { transform: rotate(360deg); } }
+.ld-text { color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+.ld-elapsed { color: var(--accent); font-size: 13px; font-variant-numeric: tabular-nums; min-height: 1em; }
+.ld-hint { color: var(--muted); font-size: 12px; max-width: 280px; line-height: 1.5; }
+
 /* ---- snapshot & share (top-left) ---- */
 #share {
   left: 16px; top: 14px;

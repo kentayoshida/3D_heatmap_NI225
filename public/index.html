@@ -11,6 +11,17 @@
   <div id="app">
     <div id="stage"></div>
 
+    <!-- Loading veil: visible immediately (before the module runs); hidden once the
+         first heatmap frame is painted. JS fills the elapsed counter + localized text. -->
+    <div id="loading">
+      <div class="ld-box">
+        <div class="ld-spinner" aria-hidden="true"></div>
+        <div class="ld-text">Now Loading…</div>
+        <div class="ld-elapsed"></div>
+        <div class="ld-hint"></div>
+      </div>
+    </div>
+
     <div id="legend" class="panel"></div>
 
     <div id="share" class="panel" role="group" aria-label="share"></div>

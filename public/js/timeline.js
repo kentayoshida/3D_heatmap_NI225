@@ -46,15 +46,18 @@ export class Timeline {
     this._timer = null;
   }
 
-  // Swap in a new index's frames (or [] to disable). Resets to the first frame.
+  // Swap in a new index's frames (or [] to disable). Parks the scrubber on the
+  // LATEST frame so the bar reflects the most recent session on load (pressing
+  // play restarts from the oldest). Playback still runs oldest → newest.
   setFrames(frames) {
     this.pause();
     this.frames = Array.isArray(frames) ? frames : [];
     this.cap = this.frames.length ? sharedCap(this.frames) : 3;
-    this.index = 0;
+    this.index = Math.max(this.frames.length - 1, 0);
+    const latest = this.frames[this.index];
     this.bar.setFrameCount(this.frames.length);
     this.bar.setEnabled(this.frames.length >= 2);
-    this.bar.setFrame(0, this.frames[0] ? shortDate(this.frames[0].asOf) : '');
+    this.bar.setFrame(this.index, latest ? shortDate(latest.asOf) : '');
   }
 
   hasFrames() { return this.frames.length >= 2; }
