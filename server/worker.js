@@ -78,7 +78,47 @@ async function buildAllPeriods(env) {
     const base = await quotesOnOrBefore(baseDates[p], key);
     out[p] = shapePeriod(latest.map, base.map, latest.date);
   }
+  out.TIMELINE = await buildTimeline(latest, key);
   return out;
+}
+
+// ---- timeline: last N trading days (daily change) with a FIXED footprint -----
+// Walks back from the latest trading date collecting N+1 daily quote maps, then
+// shapes N frames whose area (contribution) is pinned to each name's fixed weight
+// (paf × latest close) so the treemap holds still while height/color (that day's
+// change%) animate. Reuses the same daily-bars fetch as the periods (cached).
+const TIMELINE_DAYS = 5;
+async function buildTimeline(latest, key, n = TIMELINE_DAYS) {
+  const days = [latest];
+  let cursor = addDays(latest.date, -1);
+  for (let guard = 0; days.length < n + 1 && guard < 20; guard++) {
+    const q = await quotesOnOrBefore(cursor, key);
+    if (!q.map.size) break;
+    days.push(q);
+    cursor = addDays(q.date, -1);
+  }
+  days.reverse(); // ascending (oldest → newest); newest === latest
+  return shapeTimeline(days, latest.map);
+}
+
+// Pure: N+1 ascending { date, map } snapshots + the latest-close map → N frames.
+// Exported for unit tests.
+function shapeTimeline(days, latestMap) {
+  if (!days || days.length < 2) return { frames: [] };
+  const frames = [];
+  for (let i = 1; i < days.length; i++) {
+    const cur = days[i].map, prev = days[i - 1].map;
+    const constituents = PARAMS.constituents.map((c) => {
+      const c4 = code4(c.code);
+      const lc = latestMap.get(c4);
+      const size = (c.paf ?? 1) * (lc != null ? lc : 0); // FIXED footprint (weight)
+      const close = cur.get(c4), base = prev.get(c4);
+      const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
+      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), contribution: round2(size) };
+    });
+    frames.push({ asOf: fmtDash(days[i].date), constituents });
+  }
+  return { frames };
 }
 
 // ---- 寄与度 math ------------------------------------------------------------
@@ -172,4 +212,4 @@ function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-dig
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapePeriod, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray, corsHeaders };
+export const _internals = { shapePeriod, shapeTimeline, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray, corsHeaders };

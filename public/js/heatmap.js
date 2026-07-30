@@ -96,10 +96,14 @@ export class Heatmap {
     return H_MIN + Math.min(Math.abs(pct) / cap, H_OVER) * H_SPAN;
   }
 
-  /** Rebuild the field from a period's constituents. */
-  setData(constituents, { animate = true } = {}) {
+  /** Rebuild the field from a period's constituents.
+   *  `duration` (seconds) overrides the default tween length for this transition
+   *  (used by the timeline to pace frame-to-frame morphs). */
+  setData(constituents, { animate = true, duration = TWEEN_DUR, cap = null } = {}) {
     this._constituents = constituents;
-    const cap = this._cap(constituents);
+    // A caller may pin the cap (height/color scale) so a series of frames shares
+    // one vertical scale (used by the timeline); otherwise derive it per frame.
+    cap = cap != null ? cap : this._cap(constituents);
     this.cap = cap;
     const { stocks, sectors } = layoutTreemap(constituents, this.W, this.D);
     const targets = new Map(stocks.map((s) => [s.code, s]));
@@ -148,7 +152,7 @@ export class Heatmap {
             px: m.position.x, py: m.position.y, pz: m.position.z,
             color: m.material.color.clone(),
           },
-          to, t: 0,
+          to, t: 0, dur: Math.max(duration, 0.001),
         };
       } else {
         m.scale.set(to.sx, to.sy, to.sz);
@@ -177,7 +181,7 @@ export class Heatmap {
     for (const m of this.meshes) {
       const tw = m._tween;
       if (!tw) continue;
-      tw.t = Math.min(1, tw.t + dt / TWEEN_DUR);
+      tw.t = Math.min(1, tw.t + dt / (tw.dur || TWEEN_DUR));
       const k = easeInOut(tw.t);
       const { from, to } = tw;
       m.scale.set(lerp(from.sx, to.sx, k), lerp(from.sy, to.sy, k), lerp(from.sz, to.sz, k));

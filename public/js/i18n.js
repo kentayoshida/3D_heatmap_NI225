@@ -16,6 +16,16 @@ export const UI = {
     transparency: '透明度', direction: '向き', xray: 'X線',
     invertOff: 'プラス上 / マイナス下', invertOn: 'プラス下 / マイナス上',
     ttChange: '騰落率', ttContribution: '寄与度',
+    // snapshot & share
+    shareOpen: 'スクリーンショットを共有', shareImage: '画像を保存 / 共有',
+    shareX: 'X', shareLine: 'LINE', shareCopy: 'リンク',
+    shareCta: '3Dで動く株価指数ヒートマップ。ぜひ体験してみてください。',
+    shareHashtag: '#3Dヒートマップ', shareBrand: '3D株価指数ヒートマップ',
+    shareFooterCta: 'ブラウザで回して見る 3D ヒートマップ',
+    toastShared: '共有しました', toastSaved: '画像を保存しました',
+    toastCopied: 'リンクをコピーしました', toastFailed: '共有に失敗しました',
+    // timeline animation
+    tlLabel: '直近5営業日', tlPlay: '再生', tlPause: '一時停止', tlDay: '日次',
   },
   en: {
     langLabel: 'EN',
@@ -28,6 +38,16 @@ export const UI = {
     transparency: 'Transparency', direction: 'Direction', xray: 'X-ray',
     invertOff: 'Gain up / Loss down', invertOn: 'Gain down / Loss up',
     ttChange: 'Change', ttContribution: 'Contribution',
+    // snapshot & share
+    shareOpen: 'Share a screenshot', shareImage: 'Save / share image',
+    shareX: 'X', shareLine: 'LINE', shareCopy: 'Link',
+    shareCta: 'An interactive 3D stock-index heatmap — take a look.',
+    shareHashtag: '#3DHeatmap', shareBrand: '3D Stock-Index Heatmap',
+    shareFooterCta: 'Spin it in your browser — a 3D heatmap',
+    toastShared: 'Shared', toastSaved: 'Image saved',
+    toastCopied: 'Link copied', toastFailed: 'Share failed',
+    // timeline animation
+    tlLabel: 'Last 5 sessions', tlPlay: 'Play', tlPause: 'Pause', tlDay: 'Daily',
   },
 };
 

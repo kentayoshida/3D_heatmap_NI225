@@ -2,9 +2,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle } from './ui.js';
-import { loadData, CONFIG, INDICES, INDEX_META } from './data-source.js';
+import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle, buildShareControls, createToast, buildTimelineBar } from './ui.js';
+import { loadData, CONFIG, INDICES, INDEX_META, hasTimeline } from './data-source.js';
 import { LANGS, UI, sectorLabel } from './i18n.js';
+import { captureBrandedPng, shareOrDownload, shareToX, shareToLine, copyLink } from './share.js';
+import { Timeline } from './timeline.js';
+
+const SITE_URL = 'https://3dheatmap.markets-lab.com/';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const W = 100, D = 70;         // base-plane extent (X, Z)
@@ -36,7 +40,8 @@ let live = LOADED.get(currentIndex).live;
 const stage = document.getElementById('stage');
 
 // ---- renderer / scene / camera ---------------------------------------------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// preserveDrawingBuffer lets us read the canvas at any time for the share snapshot.
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(stage.clientWidth, stage.clientHeight);
 stage.appendChild(renderer.domElement);
@@ -97,10 +102,75 @@ const tooltip = createTooltip(document.body, { strings, nameFor, sectorFor });
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
 const indexBar = buildIndexBar(document.getElementById('indices'), INDICES, currentIndex, INDEX_META, setIndex);
 const langBar = buildLangBar(document.getElementById('lang'), LANGS, currentLang, (l) => UI[l].langLabel, setLang);
+
+// ---- snapshot & share -------------------------------------------------------
+const toast = createToast(document.body);
+const shareControls = buildShareControls(document.getElementById('share'), {
+  strings,
+  onCamera: doShare,
+  onX: () => shareToX({ text: shareText(), url: SITE_URL }),
+  onLine: () => shareToLine({ text: shareText(), url: SITE_URL }),
+  onCopy: async () => toast.show((await copyLink(SITE_URL)) ? strings().toastCopied : strings().toastFailed),
+});
+
+// ---- timeline (last-5-sessions animation) -----------------------------------
+const timelineBar = buildTimelineBar(document.getElementById('timeline'), {
+  strings,
+  frameCount: frameCountFor(DATA),
+  onPlayToggle: () => timeline.toggle(),
+  onSeek: (i) => timeline.seek(i),
+});
+const timeline = new Timeline({
+  heatmap,
+  bar: timelineBar,
+  onFrame: () => updateAsOf(),
+  enterExit: (active) => { if (active) periodBar.setActive(null); },
+});
+timeline.setFrames(timelineFrames(DATA));
+
 applyChrome();
+
+function frameCountFor(data) { return hasTimeline(data) ? data.TIMELINE.frames.length : 0; }
+function timelineFrames(data) { return hasTimeline(data) ? data.TIMELINE.frames : []; }
+
+// Share caption text (image is attached separately via the Web Share API).
+function shareText() {
+  const s = strings();
+  return `${titleFor()}｜${s.shareCta} ${s.shareHashtag}`;
+}
+
+async function doShare() {
+  try {
+    const s = strings();
+    const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
+    // In timeline mode label the snapshot with the current frame's date; otherwise
+    // the selected period.
+    let scope, date;
+    if (timeline.isEntered() && timelineFrames(DATA)[timeline.index]) {
+      scope = s.tlDay;
+      date = String(timelineFrames(DATA)[timeline.index].asOf || '').slice(0, 10);
+    } else {
+      scope = currentPeriod;
+      date = String(DATA[currentPeriod]?.asOf || '').slice(0, 10);
+    }
+    const header = { title: titleFor(), sub: `${scope} · ${date} ${tz}`.trim() };
+    const footer = { brand: s.shareBrand, url: SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, ''), cta: s.shareFooterCta };
+    const filename = `heatmap-${currentIndex}-${date || 'view'}.png`;
+    const shot = await captureBrandedPng({ renderer, scene, camera, header, footer, filename });
+    const outcome = await shareOrDownload({
+      file: shot.file, dataUrl: shot.dataUrl, filename,
+      title: titleFor(), text: shareText(), url: SITE_URL,
+    });
+    toast.show(outcome === 'shared' ? s.toastShared : s.toastSaved);
+  } catch (err) {
+    console.warn('[heatmap] share failed:', err.message);
+    toast.show(strings().toastFailed);
+  }
+}
 
 function setPeriod(p) {
   if (!DATA[p]) return;
+  timeline.exit();          // leaving the animation view
   currentPeriod = p;
   heatmap.setData(DATA[p].constituents, { animate: true });
   updateAsOf();
@@ -111,6 +181,7 @@ function setPeriod(p) {
 // live endpoint is unreachable (handled inside loadData).
 async function setIndex(idx) {
   if (idx === currentIndex || !INDEX_META[idx]) return;
+  timeline.exit();          // leave the animation view when switching indices
   currentIndex = idx;
   applyChrome();
   let res = LOADED.get(idx);
@@ -128,6 +199,7 @@ async function setIndex(idx) {
   live = res.live;
   if (!DATA[currentPeriod]) currentPeriod = PERIODS[0];
   heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
+  timeline.setFrames(timelineFrames(DATA)); // swap the new index's animation frames
   updateAsOf();
 }
 
@@ -138,6 +210,8 @@ function setLang(lang) {
   document.documentElement.lang = lang;
   langBar.setActive(lang);
   applyChrome();
+  shareControls.refresh();
+  timelineBar.refresh();
   heatmap.rebuildLabels();
 }
 
@@ -163,7 +237,9 @@ function updateAsOf() {
   const el = document.getElementById('asof');
   if (!el) return;
   const s = strings();
-  const date = String(DATA[currentPeriod]?.asOf || '').slice(0, 10); // YYYY-MM-DD
+  // In timeline mode reflect the current frame's date instead of the period's.
+  const frame = timeline.isEntered() ? timelineFrames(DATA)[timeline.index] : null;
+  const date = String((frame ? frame.asOf : DATA[currentPeriod]?.asOf) || '').slice(0, 10);
   const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
   if (currentLang === 'en') {
     el.textContent = `${s.asOf}: ${date || '—'} (${tz})${live ? '' : ` · ${s.sample}`}`;
@@ -184,6 +260,9 @@ async function refresh() {
     DATA = res.data;
     live = res.live;
     updateAsOf();
+    // Don't disturb an in-progress animation; refresh its frames only when idle.
+    if (timeline.isEntered()) return;
+    timeline.setFrames(timelineFrames(DATA));
     if (changed) heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
   } catch (err) {
     console.warn('[heatmap] refresh failed, keeping current data:', err.message);
@@ -241,4 +320,4 @@ function animate() {
 animate();
 
 // expose for debugging / e2e checks
-window.__heatmap = { scene, camera, controls, heatmap, setPeriod, setIndex, setLang, PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; } };
+window.__heatmap = { scene, camera, controls, heatmap, timeline, setPeriod, setIndex, setLang, doShare, captureBrandedPng: (o) => captureBrandedPng({ renderer, scene, camera, ...o }), PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; } };
