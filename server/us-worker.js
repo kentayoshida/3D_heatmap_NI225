@@ -85,7 +85,44 @@ async function buildIndex(index) {
     throw new Error(`Yahoo returned too few series (${ok}/${codes.length}) — rate limited?`);
   }
 
-  return shapeAllPeriods(index, cfg, seriesByCode, indexLevel);
+  const out = shapeAllPeriods(index, cfg, seriesByCode, indexLevel);
+  out.TIMELINE = buildTimeline(index, cfg, seriesByCode, indexSeries);
+  return out;
+}
+
+// ---- timeline: last N trading days (daily change) with a FIXED footprint -----
+// The area (contribution) is pinned to a stable per-name weight (share price for
+// the price-weighted Dow, cap weight% for the Nasdaq) so the treemap layout is the
+// same on every frame — only height/color (that day's change%) animate. Pure over
+// the already-fetched series (no extra requests). Exported for unit tests.
+const TIMELINE_DAYS = 5;
+function fixedSize(index, c, s) {
+  if (index === 'nasdaq') return Math.max(c.weight ?? 0, 0);
+  return s && s.length ? lastClose(s) : 0; // dow: share price
+}
+function longestSeries(seriesByCode) {
+  let best = null;
+  for (const s of seriesByCode.values()) if (s && (!best || s.length > best.length)) best = s;
+  return best;
+}
+function buildTimeline(index, cfg, seriesByCode, indexSeries, n = TIMELINE_DAYS) {
+  const ref = indexSeries && indexSeries.length >= 2 ? indexSeries : longestSeries(seriesByCode);
+  if (!ref || ref.length < 2) return { frames: [] };
+  const dates = ref.slice(-(n + 1)).map((p) => p.t); // ascending, up to n+1 dates
+  const frames = [];
+  for (let i = 1; i < dates.length; i++) {
+    const d = dates[i], prev = dates[i - 1];
+    const constituents = cfg.constituents.map((c) => {
+      const s = seriesByCode.get(c.code);
+      const size = fixedSize(index, c, s);
+      const close = s && s.length ? closeOnOrBefore(s, d) : null;
+      const base = s && s.length ? closeOnOrBefore(s, prev) : null;
+      const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
+      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), contribution: round2(size) };
+    });
+    frames.push({ asOf: fmtDash(d), constituents });
+  }
+  return { frames };
 }
 
 // Pure: build all 7 periods from fetched series. Exported for unit tests.
@@ -204,4 +241,4 @@ function fmtDash(d) {
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders };
+export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize };

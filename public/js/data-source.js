@@ -66,9 +66,22 @@ function getSample(index) {
 function normalize(json) {
   if (!json || typeof json !== 'object') throw new Error('bad data payload');
   for (const [period, block] of Object.entries(json)) {
+    if (period === 'TIMELINE') {
+      // Optional animation block: { frames: [{ asOf, constituents:[…] }, …] }.
+      if (!block || !Array.isArray(block.frames)) throw new Error('TIMELINE missing frames[]');
+      for (const f of block.frames) {
+        if (!f || !Array.isArray(f.constituents)) throw new Error('TIMELINE frame missing constituents[]');
+      }
+      continue;
+    }
     if (!block || !Array.isArray(block.constituents)) {
       throw new Error(`period ${period} missing constituents[]`);
     }
   }
   return json;
+}
+
+// True if a loaded payload carries a usable timeline (≥2 frames to animate).
+export function hasTimeline(data) {
+  return !!(data && data.TIMELINE && Array.isArray(data.TIMELINE.frames) && data.TIMELINE.frames.length >= 2);
 }

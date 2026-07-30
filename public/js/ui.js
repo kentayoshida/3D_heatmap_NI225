@@ -129,6 +129,143 @@ export function renderLegend(el, { strings, title, inverted }) {
     `<div class="lg-hint">${escapeHtml(strings.hint)}</div>`;
 }
 
+// ---- snapshot & share -------------------------------------------------------
+// Camera button (📷) captures + shares the current view; a small cluster of
+// X / LINE / copy-link buttons shares the CTA text + URL. `strings` is a getter.
+// Handlers are async; buttons are disabled while a capture is in flight.
+const CAMERA_SVG =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 7h3l1.3-2h7.4L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/>' +
+  '<circle cx="12" cy="13" r="3.4"/></svg>';
+
+export function buildShareControls(el, { strings, onCamera, onX, onLine, onCopy }) {
+  el.innerHTML = '';
+  const s = strings();
+
+  const cam = document.createElement('button');
+  cam.className = 'share-cam';
+  cam.type = 'button';
+  cam.innerHTML = CAMERA_SVG;
+  cam.title = s.shareOpen;
+  cam.setAttribute('aria-label', s.shareOpen);
+
+  const row = document.createElement('div');
+  row.className = 'share-row';
+  const mk = (label, title, handler) => {
+    const b = document.createElement('button');
+    b.className = 'share-mini';
+    b.type = 'button';
+    b.textContent = label;
+    b.title = title;
+    b.addEventListener('click', () => handler && handler());
+    return b;
+  };
+  row.appendChild(mk(s.shareX, 'X', onX));
+  row.appendChild(mk(s.shareLine, 'LINE', onLine));
+  row.appendChild(mk('🔗', s.shareCopy, onCopy));
+
+  let busy = false;
+  cam.addEventListener('click', async () => {
+    if (busy || !onCamera) return;
+    busy = true;
+    cam.disabled = true;
+    try { await onCamera(); } finally { busy = false; cam.disabled = false; }
+  });
+
+  el.appendChild(cam);
+  el.appendChild(row);
+
+  return {
+    refresh() {
+      const t = strings();
+      cam.title = t.shareOpen;
+      cam.setAttribute('aria-label', t.shareOpen);
+      const minis = row.querySelectorAll('.share-mini');
+      minis[0].textContent = t.shareX; minis[0].title = 'X';
+      minis[1].textContent = t.shareLine; minis[1].title = 'LINE';
+      minis[2].title = t.shareCopy;
+    },
+  };
+}
+
+// Small transient toast, bottom-center-ish. Returns { show(msg) }.
+export function createToast(parent) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.display = 'none';
+  parent.appendChild(el);
+  let timer = null;
+  return {
+    show(msg, ms = 2200) {
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.classList.add('show');
+      clearTimeout(timer);
+      timer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { el.style.display = 'none'; }, 250); }, ms);
+    },
+  };
+}
+
+// ---- timeline (last-N-sessions) animation bar -------------------------------
+// Play/pause + a scrubber over `frameCount` frames + a date label. `onPlayToggle`
+// fires on the play button; `onSeek(i)` on scrubbing. Main owns playback state and
+// calls setPlaying / setFrame back. `strings` is a getter.
+export function buildTimelineBar(el, { strings, frameCount, onPlayToggle, onSeek }) {
+  el.innerHTML = '';
+  const s = strings();
+
+  const label = document.createElement('span');
+  label.className = 'tl-label';
+  label.textContent = s.tlLabel;
+
+  const play = document.createElement('button');
+  play.className = 'tl-play';
+  play.type = 'button';
+  play.setAttribute('aria-label', s.tlPlay);
+
+  const slider = document.createElement('input');
+  slider.className = 'tl-slider';
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = String(Math.max(frameCount - 1, 0));
+  slider.step = '1';
+  slider.value = '0';
+  slider.setAttribute('aria-label', s.tlLabel);
+
+  const date = document.createElement('span');
+  date.className = 'tl-date';
+  date.textContent = '';
+
+  let playing = false;
+  const renderPlay = () => {
+    play.innerHTML = playing ? '<span class="tl-ico">❚❚</span>' : '<span class="tl-ico">▶</span>';
+    play.setAttribute('aria-label', playing ? strings().tlPause : strings().tlPlay);
+  };
+  renderPlay();
+
+  play.addEventListener('click', () => onPlayToggle && onPlayToggle());
+  slider.addEventListener('input', () => onSeek && onSeek(Number(slider.value)));
+
+  el.appendChild(label);
+  el.appendChild(play);
+  el.appendChild(slider);
+  el.appendChild(date);
+
+  return {
+    setPlaying(v) { playing = v; renderPlay(); },
+    setFrame(i, dateStr) { slider.value = String(i); if (dateStr != null) date.textContent = dateStr; },
+    setFrameCount(n) { slider.max = String(Math.max(n - 1, 0)); },
+    setEnabled(v) { play.disabled = !v; slider.disabled = !v; el.classList.toggle('disabled', !v); },
+    refresh() {
+      const t = strings();
+      label.textContent = t.tlLabel;
+      slider.setAttribute('aria-label', t.tlLabel);
+      renderPlay();
+    },
+  };
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
