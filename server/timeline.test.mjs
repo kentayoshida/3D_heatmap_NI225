@@ -64,6 +64,43 @@ test('us buildTimeline: too-short series → no frames', () => {
   assert.deepEqual(US.buildTimeline('nasdaq', cfg, one, one.get('X')).frames, []);
 });
 
+// ---- US worker: spark payload parsing (batched multi-symbol fetch) ----------
+test('us parseSpark: multiple symbols → sorted close series per symbol', () => {
+  const payload = {
+    spark: {
+      result: [
+        {
+          symbol: 'AAA',
+          response: [{
+            timestamp: [1000, 2000, 3000],
+            indicators: { quote: [{ close: [10, null, 12] }] }, // null gap dropped
+          }],
+        },
+        {
+          // symbol taken from meta when the top-level field is absent
+          response: [{
+            meta: { symbol: 'BBB' },
+            timestamp: [3000, 1000], // out of order → sorted ascending
+            indicators: { quote: [{ close: [22, 20] }] },
+          }],
+        },
+        { symbol: 'CCC', response: [{}] }, // malformed → skipped
+      ],
+    },
+  };
+  const map = US.parseSpark(payload);
+  assert.deepEqual(map.get('AAA').map((p) => p.c), [10, 12]);
+  const bbb = map.get('BBB');
+  assert.deepEqual(bbb.map((p) => p.c), [20, 22]);
+  assert.ok(bbb[0].t < bbb[1].t); // ascending by date
+  assert.equal(map.has('CCC'), false);
+});
+
+test('us parseSpark: junk payload → empty map', () => {
+  assert.equal(US.parseSpark({}).size, 0);
+  assert.equal(US.parseSpark({ spark: { result: null } }).size, 0);
+});
+
 // ---- Nikkei worker: shapeTimeline is pure over daily quote maps -------------
 test('nikkei shapeTimeline: fixed footprint (paf×latest close), daily change%', () => {
   // Use a real constituent code from the bundled params so PARAMS lookup hits.

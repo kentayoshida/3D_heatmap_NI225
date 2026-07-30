@@ -4,9 +4,13 @@
 //   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
 //
 // Yahoo Finance has no auth (no key/secret needed) but doesn't allow in-browser
-// CORS calls and rate-limits, so we proxy it. One chart request per constituent
-// (range=1y) supplies every period's base close, so a full refresh is ~30 (Dow)
-// or ~100 (Nasdaq) requests, cached for 10 minutes.
+// CORS calls and rate-limits, so we proxy it. Constituent daily series come from
+// the *spark* endpoint, which takes many symbols per request (?symbols=A,B,C…),
+// so a full refresh is only a handful of subrequests (~2 for Dow, ~5 for Nasdaq)
+// plus 1 for the index level — well under Cloudflare's free-plan 50-subrequest
+// cap. (An earlier one-request-per-constituent design made ~101 subrequests for
+// the Nasdaq 100 and tripped that cap, so Nasdaq fell back to the sample.)
+// Cached for 10 minutes.
 //
 // 寄与度 (area ∝ |contribution|):
 //   Dow    (price-weighted): contribution = (close − base) / divisor
@@ -19,10 +23,11 @@
 import PARAMS from './us-index-params.json' with { type: 'json' };
 
 const YCHART = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const YSPARK = 'https://query1.finance.yahoo.com/v7/finance/spark';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const PAYLOAD_TTL = 600; // seconds
-const CONCURRENCY = 8;   // parallel Yahoo requests
+const SPARK_BATCH = 20;  // symbols per spark request (keeps URLs + subrequests small)
 const INDEX_SYMBOL = { dow: '^DJI', nasdaq: '^NDX' };
 
 const _cache = new Map(); // index -> { data, exp }
@@ -199,14 +204,49 @@ async function fetchSeries(symbol) {
   return out;
 }
 
+// Spark endpoint: many symbols per request. Returns Map<symbol, series> for the
+// symbols in one batch (missing/failed symbols are simply absent from the map).
+async function fetchSparkBatch(symbols) {
+  const url = `${YSPARK}?symbols=${encodeURIComponent(symbols.join(','))}&range=1y&interval=1d`;
+  const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' } });
+  if (!r.ok) return new Map();
+  return parseSpark(await r.json());
+}
+
+// Pure parser for a Yahoo spark payload → Map<symbol, [{t:Date,c:number}]>.
+// Shape: { spark: { result: [ { symbol, response: [ { timestamp:[…],
+//          indicators: { quote: [ { close:[…] } ] }, meta:{ symbol } } ] } ] } }.
+function parseSpark(j) {
+  const map = new Map();
+  const results = j?.spark?.result;
+  if (!Array.isArray(results)) return map;
+  for (const item of results) {
+    const resp = item?.response?.[0];
+    const sym = item?.symbol || resp?.meta?.symbol;
+    const ts = resp?.timestamp;
+    const closes = resp?.indicators?.quote?.[0]?.close;
+    if (!sym || !Array.isArray(ts) || !Array.isArray(closes)) continue;
+    const out = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (c != null && Number.isFinite(c)) out.push({ t: new Date(ts[i] * 1000), c: Number(c) });
+    }
+    out.sort((a, b) => a.t - b.t);
+    map.set(sym, out);
+  }
+  return map;
+}
+
 async function fetchAllSeries(codes) {
   const map = new Map();
-  for (let i = 0; i < codes.length; i += CONCURRENCY) {
-    const batch = codes.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map(async (code) => {
-      try { return [code, await fetchSeries(code)]; } catch { return [code, null]; }
-    }));
-    for (const [code, s] of results) map.set(code, s);
+  const batches = [];
+  for (let i = 0; i < codes.length; i += SPARK_BATCH) batches.push(codes.slice(i, i + SPARK_BATCH));
+  const parts = await Promise.all(batches.map(async (b) => {
+    try { return await fetchSparkBatch(b); } catch { return new Map(); }
+  }));
+  for (let bi = 0; bi < batches.length; bi++) {
+    const part = parts[bi];
+    for (const code of batches[bi]) map.set(code, part.get(code) || null);
   }
   return map;
 }
@@ -241,4 +281,4 @@ function fmtDash(d) {
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize };
+export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark };

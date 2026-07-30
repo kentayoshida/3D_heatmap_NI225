@@ -183,6 +183,11 @@ APIが返すのは*株価*であり、寄与度は別途計算が必要です。
 米国2指数は `server/us-worker.js`（Cloudflare Worker）が **Yahoo Finance** から
 日足を取得し、寄与度を計算して同じ形のJSONを返します（`?index=dow` / `?index=nasdaq`）。
 Yahoo は **APIキー不要** ですが、ブラウザ直叩き（CORS）とレート制限のためプロキシ経由にします。
+構成銘柄の日足は Yahoo の **spark エンドポイント**（`?symbols=A,B,C…` で複数銘柄を1回で取得）
+でまとめて取り、外部fetch回数を抑えます（DOW≈2、NASDAQ≈5リクエスト＋指数1）。これは
+Cloudflare 無料プランの **1リクエストあたり50サブリクエスト上限** に収めるためで、以前の
+「1銘柄1リクエスト」方式では NASDAQ 100（≈101リクエスト）が上限を超えてサンプルへ
+フォールバックしていました。
 
 - 構成銘柄・NASDAQのウェイトは `server/us-constituents.mjs`（同梱シード）にあり、
   `node server/build-us-params.mjs` で `server/us-index-params.json` を生成します。
