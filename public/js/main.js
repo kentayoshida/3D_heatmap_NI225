@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle, buildShareControls, createToast, buildTimelineBar } from './ui.js';
+import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle, buildShareControls, createToast, buildTimelineBar, createLoading } from './ui.js';
 import { loadData, CONFIG, INDICES, INDEX_META, hasTimeline } from './data-source.js';
 import { LANGS, UI, sectorLabel } from './i18n.js';
 import { captureBrandedPng, shareOrDownload, shareToX, shareToLine, copyLink } from './share.js';
@@ -27,6 +27,11 @@ function nameFor(c) {
 }
 const sectorFor = (sector) => sectorLabel(sector, currentLang);
 const titleFor = () => INDEX_META[currentIndex].title[currentLang];
+
+// Loading veil (already visible from the HTML) — start its elapsed counter now,
+// while the first index's data is fetched and the scene is built.
+const loading = createLoading(document.getElementById('loading'), strings);
+loading.show();
 
 // Bundled sample by default; point data-source.js CONFIG.endpoints at backends to
 // go live. Top-level await keeps the rest of setup unchanged.
@@ -186,21 +191,24 @@ async function setIndex(idx) {
   applyChrome();
   let res = LOADED.get(idx);
   if (!res) {
+    loading.show(); // first visit to this index: show the veil during the fetch
     try {
       res = await loadData(idx);
       LOADED.set(idx, res);
     } catch (err) {
       console.warn(`[heatmap] failed to load ${idx}:`, err.message);
+      loading.hide();
       return;
     }
   }
-  if (currentIndex !== idx) return; // a newer switch won the race
+  if (currentIndex !== idx) { loading.hide(); return; } // a newer switch won the race
   DATA = res.data;
   live = res.live;
   if (!DATA[currentPeriod]) currentPeriod = PERIODS[0];
   heatmap.setData(DATA[currentPeriod].constituents, { animate: true });
   timeline.setFrames(timelineFrames(DATA)); // swap the new index's animation frames
   updateAsOf();
+  loading.hide();
 }
 
 // Switch UI language: re-render all chrome and rebuild the (baked) 3D labels.
@@ -317,7 +325,13 @@ function animate() {
   heatmap.update(dt);
   renderer.render(scene, camera);
 }
+// Paint the first frame under the veil (bars are already built), then reveal.
+// rAF is preferred (fires right after a paint); a short timeout is a fallback for
+// environments where rAF is throttled.
+renderer.render(scene, camera);
 animate();
+requestAnimationFrame(() => loading.hide());
+setTimeout(() => loading.hide(), 250);
 
 // expose for debugging / e2e checks
 window.__heatmap = { scene, camera, controls, heatmap, timeline, setPeriod, setIndex, setLang, doShare, captureBrandedPng: (o) => captureBrandedPng({ renderer, scene, camera, ...o }), PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; } };

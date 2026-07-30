@@ -207,6 +207,39 @@ export function createToast(parent) {
   };
 }
 
+// ---- loading overlay --------------------------------------------------------
+// Full-screen "Now Loading" veil with a spinner + a live elapsed-seconds counter
+// (so the user sees progress is being made) + a first-load hint. `el` is the
+// #loading element already present in the HTML (visible before JS runs); `strings`
+// is a getter. Returns { show, hide } — both idempotent.
+export function createLoading(el, strings) {
+  if (!el) return { show() {}, hide() {} };
+  const text = el.querySelector('.ld-text');
+  const elapsed = el.querySelector('.ld-elapsed');
+  const hint = el.querySelector('.ld-hint');
+  let timer = null, start = 0;
+  const paint = () => {
+    const s = strings();
+    if (text) text.textContent = `${s.loading}…`;
+    if (hint) hint.textContent = s.loadingHint;
+    if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - start) / 1000)}${s.sec}`;
+  };
+  return {
+    show() {
+      start = Date.now();
+      el.classList.remove('hidden');
+      paint();
+      clearInterval(timer);
+      timer = setInterval(paint, 250);
+    },
+    hide() {
+      clearInterval(timer);
+      timer = null;
+      el.classList.add('hidden');
+    },
+  };
+}
+
 // ---- timeline (last-N-sessions) animation bar -------------------------------
 // Play/pause + a scrubber over `frameCount` frames + a date label. `onPlayToggle`
 // fires on the play button; `onSeek(i)` on scrubbing. Main owns playback state and
