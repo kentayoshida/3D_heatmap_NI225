@@ -39,7 +39,11 @@ export class Heatmap {
     this.xray = false;     // wireframe (outline-only) mode
     this.invert = false;   // flip vertical direction (plus down / minus up)
     this._constituents = null;
+    this._layout = null;   // last { stocks, sectors, cap } for label rebuilds
     this.highlighted = null;
+    // language-aware display resolvers (overridden by main.js)
+    this.nameFor = (c) => c.name || c.code;
+    this.sectorFor = (sector) => sector;
   }
 
   get pickables() { return this.meshes; }
@@ -155,7 +159,14 @@ export class Heatmap {
       }
     }
 
+    this._layout = { stocks, sectors, cap };
     this._buildLabels(stocks, sectors, cap);
+  }
+
+  /** Rebuild only the text labels (e.g. after a language switch), without
+   *  touching the bars — the layout is identical, only the strings change. */
+  rebuildLabels() {
+    if (this._layout) this._buildLabels(this._layout.stocks, this._layout.sectors, this._layout.cap);
   }
 
   /** Advance tweens. dt in seconds. */
@@ -212,7 +223,7 @@ export class Heatmap {
     // sector headers — small pills floating above each district
     for (const sec of sectors) {
       if (sec.w < 7 || sec.d < 5) continue; // skip tiny districts
-      const sp = this._textSprite({ title: sec.sector, bg: 'rgba(10,14,22,0.62)', color: '#cbd5e8', fontSize: 26 });
+      const sp = this._textSprite({ title: this.sectorFor(sec.sector), bg: 'rgba(10,14,22,0.62)', color: '#cbd5e8', fontSize: 26 });
       const worldW = Math.min(sec.w * 0.5, 8);
       sp.scale.set(worldW, worldW / sp.userData.aspect, 1);
       sp.position.set(sec.cx, SECTOR_Y, sec.cz);
@@ -230,7 +241,7 @@ export class Heatmap {
       const height = this._height(s.changePct, cap);
       const topY = Math.max(0, sign * height);
       const pctTxt = (s.changePct >= 0 ? '+' : '') + s.changePct.toFixed(2) + '%';
-      const sp = this._textSprite({ title: s.name, sub: pctTxt, color: '#ffffff', subColor: '#e4ebf7', fontSize: 30 });
+      const sp = this._textSprite({ title: this.nameFor(s), sub: pctTxt, color: '#ffffff', subColor: '#e4ebf7', fontSize: 30 });
       const worldW = Math.min(Math.max(s.w * 0.78, 4), 16);
       sp.scale.set(worldW, worldW / sp.userData.aspect, 1);
       sp.position.set(s.x, topY + (worldW / sp.userData.aspect) / 2 + 0.3, s.z);

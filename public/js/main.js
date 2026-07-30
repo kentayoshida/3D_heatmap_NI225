@@ -2,16 +2,27 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'OrbitControls';
 import { Heatmap } from './heatmap.js';
-import { buildPeriodBar, buildIndexBar, createTooltip, buildLegend, setLegendTitle, buildOpacityControl, buildInvertToggle } from './ui.js';
+import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle } from './ui.js';
 import { loadData, CONFIG, INDICES, INDEX_META } from './data-source.js';
+import { LANGS, UI, sectorLabel } from './i18n.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const W = 100, D = 70;         // base-plane extent (X, Z)
 const REFRESH_MS = 15 * 60 * 1000; // poll for newer end-of-day data every 15 min
 
-// One index shown at a time; others are loaded lazily on first switch and cached.
+// One index + one language shown at a time; other indices load lazily & cache.
 let currentIndex = 'NIKKEI';
+let currentLang = 'ja';
 const LOADED = new Map(); // index -> { data, live }
+
+// language-aware display resolvers (used by the heatmap labels + tooltip)
+const strings = () => UI[currentLang];
+function nameFor(c) {
+  if (currentLang === 'en' && !INDEX_META[currentIndex].namesEnglish) return c.nameEn || c.code;
+  return c.name || c.code; // JA, or an index whose names are already English
+}
+const sectorFor = (sector) => sectorLabel(sector, currentLang);
+const titleFor = () => INDEX_META[currentIndex].title[currentLang];
 
 // Bundled sample by default; point data-source.js CONFIG.endpoints at backends to
 // go live. Top-level await keeps the rest of setup unchanged.
@@ -70,22 +81,23 @@ scene.add(grid);
 
 // ---- heatmap ----------------------------------------------------------------
 const heatmap = new Heatmap(scene, { W, D });
+heatmap.nameFor = nameFor;
+heatmap.sectorFor = sectorFor;
 let currentPeriod = '1D';
 heatmap.setData(DATA[currentPeriod].constituents, { animate: false });
 
 // ---- UI ---------------------------------------------------------------------
-buildLegend(document.getElementById('legend'), INDEX_META[currentIndex].title);
-buildOpacityControl(document.getElementById('controls'), (t) => heatmap.setTransparency(t));
-buildInvertToggle(document.getElementById('controls'), (inv) => {
+const legendEl = document.getElementById('legend');
+const opacityControl = buildOpacityControl(document.getElementById('controls'), (t) => heatmap.setTransparency(t), strings);
+const invertToggle = buildInvertToggle(document.getElementById('controls'), (inv) => {
   heatmap.setInvert(inv);
-  const dir = document.getElementById('lg-dir');
-  if (dir) dir.innerHTML = `<b>高さ</b> = 騰落率（0%基準・${inv ? '上=マイナス/下=プラス' : '上=プラス/下=マイナス'}）`;
-});
-const tooltip = createTooltip(document.body);
+  renderLegendNow(); // reflect the flipped direction text
+}, strings);
+const tooltip = createTooltip(document.body, { strings, nameFor, sectorFor });
 const periodBar = buildPeriodBar(document.getElementById('periods'), PERIODS, currentPeriod, setPeriod);
 const indexBar = buildIndexBar(document.getElementById('indices'), INDICES, currentIndex, INDEX_META, setIndex);
-applyIndexChrome();
-updateAsOf();
+const langBar = buildLangBar(document.getElementById('lang'), LANGS, currentLang, (l) => UI[l].langLabel, setLang);
+applyChrome();
 
 function setPeriod(p) {
   if (!DATA[p]) return;
@@ -100,7 +112,7 @@ function setPeriod(p) {
 async function setIndex(idx) {
   if (idx === currentIndex || !INDEX_META[idx]) return;
   currentIndex = idx;
-  applyIndexChrome();
+  applyChrome();
   let res = LOADED.get(idx);
   if (!res) {
     try {
@@ -119,20 +131,45 @@ async function setIndex(idx) {
   updateAsOf();
 }
 
-// Title chrome that depends on the selected index (legend + browser tab).
-function applyIndexChrome() {
-  const title = INDEX_META[currentIndex].title;
-  setLegendTitle(title);
-  document.title = title;
+// Switch UI language: re-render all chrome and rebuild the (baked) 3D labels.
+function setLang(lang) {
+  if (lang === currentLang || !UI[lang]) return;
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  langBar.setActive(lang);
+  applyChrome();
+  heatmap.rebuildLabels();
+}
+
+// All text chrome that depends on the current index and/or language.
+function applyChrome() {
+  document.title = titleFor();
   indexBar.setActive(currentIndex);
+  renderLegendNow();
+  invertToggle.render();
+  opacityControl.refresh();
+  const lo = document.getElementById('lbl-opacity');
+  const li = document.getElementById('lbl-invert');
+  if (lo) lo.textContent = strings().transparency;
+  if (li) li.textContent = strings().direction;
+  updateAsOf();
+}
+
+function renderLegendNow() {
+  renderLegend(legendEl, { strings: strings(), title: titleFor(), inverted: invertToggle ? invertToggle.get() : false });
 }
 
 function updateAsOf() {
   const el = document.getElementById('asof');
   if (!el) return;
+  const s = strings();
   const date = String(DATA[currentPeriod]?.asOf || '').slice(0, 10); // YYYY-MM-DD
-  const tz = currentIndex === 'NIKKEI' ? 'JST' : 'ET';
-  el.textContent = `データ基準日: ${date || '—'}（${tz}）${live ? '' : ' ・サンプル'}`;
+  const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
+  if (currentLang === 'en') {
+    el.textContent = `${s.asOf}: ${date || '—'} (${tz})${live ? '' : ` · ${s.sample}`}`;
+  } else {
+    el.textContent = `${s.asOf}: ${date || '—'}（${tz}）${live ? '' : ` ・${s.sample}`}`;
+  }
 }
 
 // ---- auto-refresh: pick up new end-of-day data without a manual reload ------
@@ -204,4 +241,4 @@ function animate() {
 animate();
 
 // expose for debugging / e2e checks
-window.__heatmap = { scene, camera, controls, heatmap, setPeriod, setIndex, PERIODS, INDICES, get index() { return currentIndex; } };
+window.__heatmap = { scene, camera, controls, heatmap, setPeriod, setIndex, setLang, PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; } };

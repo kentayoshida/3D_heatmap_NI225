@@ -12,6 +12,11 @@ export function buildIndexBar(el, indices, current, meta, onSelect) {
   return buildPillBar(el, indices.map((k) => [k, (meta[k] && meta[k].label) || k]), current, onSelect);
 }
 
+// Language toggle (日本語 / EN). Same pill styling.
+export function buildLangBar(el, langs, current, labelOf, onSelect) {
+  return buildPillBar(el, langs.map((l) => [l, labelOf(l)]), current, onSelect);
+}
+
 // Shared pill-button group. `items` = [[value, label], ...].
 function buildPillBar(el, items, current, onSelect) {
   el.innerHTML = '';
@@ -40,24 +45,27 @@ function buildPillBar(el, items, current, onSelect) {
   return { setActive };
 }
 
-export function createTooltip(parent) {
+// `ctx` supplies language-aware helpers: strings() → the current UI string table,
+// nameFor(data) → display name, sectorFor(sector) → display sector.
+export function createTooltip(parent, ctx) {
   const el = document.createElement('div');
   el.className = 'tooltip';
   el.style.display = 'none';
   parent.appendChild(el);
   return {
     show(data, cap, x, y) {
+      const s = ctx.strings();
       const up = data.changePct >= 0;
       const pct = (up ? '+' : '') + data.changePct.toFixed(2) + '%';
       const contrib = (data.contribution >= 0 ? '+' : '') + data.contribution.toFixed(2);
       const sw = changeColorCss(data.changePct, cap);
       el.innerHTML =
         `<div class="tt-head"><span class="tt-swatch" style="background:${sw}"></span>` +
-        `<span class="tt-name">${escapeHtml(data.name)}</span>` +
+        `<span class="tt-name">${escapeHtml(ctx.nameFor(data))}</span>` +
         `<span class="tt-code">${escapeHtml(data.code)}</span></div>` +
-        `<div class="tt-sector">${escapeHtml(data.sector)}</div>` +
-        `<div class="tt-row"><span>騰落率</span><b class="${up ? 'up' : 'down'}">${pct}</b></div>` +
-        `<div class="tt-row"><span>寄与度</span><b class="${data.contribution >= 0 ? 'up' : 'down'}">${contrib}</b></div>`;
+        `<div class="tt-sector">${escapeHtml(ctx.sectorFor(data.sector))}</div>` +
+        `<div class="tt-row"><span>${escapeHtml(s.ttChange)}</span><b class="${up ? 'up' : 'down'}">${pct}</b></div>` +
+        `<div class="tt-row"><span>${escapeHtml(s.ttContribution)}</span><b class="${data.contribution >= 0 ? 'up' : 'down'}">${contrib}</b></div>`;
       el.style.display = 'block';
       this.move(x, y);
     },
@@ -78,48 +86,47 @@ export function createTooltip(parent) {
 // 0% = solid, higher = more see-through, top of the range = X-ray (outline only).
 // `onChange` receives the transparency fraction in [0,1]; the heatmap maps it to
 // fill opacity / X-ray mode.
-export function buildOpacityControl(el, onChange) {
+// `strings` is a getter returning the current UI string table (for the X-ray suffix).
+export function buildOpacityControl(el, onChange, strings) {
   const input = el.querySelector('#opacity');
   const out = el.querySelector('#opacity-val');
   const apply = () => {
     const t = Math.round(+input.value);   // transparency %
-    out.textContent = t >= 85 ? `${t}% · X線` : `${t}%`;
+    out.textContent = t >= 85 ? `${t}% · ${strings().xray}` : `${t}%`;
     onChange(t / 100);
   };
   input.addEventListener('input', apply);
   apply();
-  return { set(t) { input.value = String(t); apply(); } };
+  return { set(t) { input.value = String(t); apply(); }, refresh: apply };
 }
 
 // Toggle that flips the vertical direction of bars. `onChange` receives a boolean
-// (true = inverted: plus down / minus up).
-export function buildInvertToggle(el, onChange) {
+// (true = inverted: plus down / minus up). `strings` is a getter for the labels.
+export function buildInvertToggle(el, onChange, strings) {
   const btn = el.querySelector('#invert');
   let inverted = false;
   const render = () => {
-    btn.textContent = inverted ? 'プラス下 / マイナス上' : 'プラス上 / マイナス下';
+    const s = strings();
+    btn.textContent = inverted ? s.invertOn : s.invertOff;
     btn.classList.toggle('active', inverted);
     btn.setAttribute('aria-pressed', String(inverted));
   };
   btn.addEventListener('click', () => { inverted = !inverted; render(); onChange(inverted); });
   render();
-  return { get() { return inverted; } };
+  return { get() { return inverted; }, render };
 }
 
-export function buildLegend(el, title = '3D ヒートマップ') {
+// Single legend renderer, driven by { strings, title, inverted }. Called on init
+// and whenever the language, index (title) or invert state changes.
+export function renderLegend(el, { strings, title, inverted }) {
+  const dir = inverted ? strings.dirDown : strings.dirUp;
   el.innerHTML =
-    `<div class="lg-title" id="lg-title">${escapeHtml(title)}</div>` +
-    `<div class="lg-enc" id="lg-dir"><b>高さ</b> = 騰落率（0%基準・上=プラス/下=マイナス）</div>` +
-    `<div class="lg-enc"><b>面積</b> = 寄与度</div>` +
-    `<div class="lg-scale"><span class="down">下落</span>` +
-    `<span class="lg-grad"></span><span class="up">上昇</span></div>` +
-    `<div class="lg-hint">ドラッグで回転・ホイールで拡大縮小</div>`;
-}
-
-// Update just the legend title (on index switch) without rebuilding the panel.
-export function setLegendTitle(title) {
-  const el = document.getElementById('lg-title');
-  if (el) el.textContent = title;
+    `<div class="lg-title">${escapeHtml(title)}</div>` +
+    `<div class="lg-enc" id="lg-dir">${strings.legHeight.replace('{dir}', escapeHtml(dir))}</div>` +
+    `<div class="lg-enc">${strings.legArea}</div>` +
+    `<div class="lg-scale"><span class="down">${escapeHtml(strings.down)}</span>` +
+    `<span class="lg-grad"></span><span class="up">${escapeHtml(strings.up)}</span></div>` +
+    `<div class="lg-hint">${escapeHtml(strings.hint)}</div>`;
 }
 
 function escapeHtml(s) {
