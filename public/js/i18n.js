@@ -23,6 +23,7 @@ export const UI = {
     shareHashtag: '#3Dヒートマップ', shareBrand: '3D株価指数ヒートマップ',
     shareFooterCta: 'ブラウザで回して見る 3D ヒートマップ',
     toastShared: '共有しました', toastSaved: '画像を保存しました',
+    toastSavedAttach: '画像を保存しました。投稿画面で添付してください',
     toastCopied: 'リンクをコピーしました', toastFailed: '共有に失敗しました',
     // timeline animation
     tlLabel: '直近5営業日', tlPlay: '再生', tlPause: '一時停止', tlDay: '日次',
@@ -47,6 +48,7 @@ export const UI = {
     shareHashtag: '#3DHeatmap', shareBrand: '3D Stock-Index Heatmap',
     shareFooterCta: 'Spin it in your browser — a 3D heatmap',
     toastShared: 'Shared', toastSaved: 'Image saved',
+    toastSavedAttach: 'Image saved — attach it in the compose window',
     toastCopied: 'Link copied', toastFailed: 'Share failed',
     // timeline animation
     tlLabel: 'Last 5 sessions', tlPlay: 'Play', tlPause: 'Pause', tlDay: 'Daily',

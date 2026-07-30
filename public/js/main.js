@@ -5,7 +5,7 @@ import { Heatmap } from './heatmap.js';
 import { buildPeriodBar, buildIndexBar, buildLangBar, createTooltip, renderLegend, buildOpacityControl, buildInvertToggle, buildShareControls, createToast, buildTimelineBar, createLoading } from './ui.js';
 import { loadData, CONFIG, INDICES, INDEX_META, hasTimeline } from './data-source.js';
 import { LANGS, UI, sectorLabel } from './i18n.js';
-import { captureBrandedPng, shareOrDownload, shareToX, shareToLine, copyLink } from './share.js';
+import { captureBrandedPng, nativeShareFiles, downloadImage, shareToX, shareToLine, copyLink } from './share.js';
 import { Timeline } from './timeline.js';
 
 const SITE_URL = 'https://3dheatmap.markets-lab.com/';
@@ -112,9 +112,9 @@ const langBar = buildLangBar(document.getElementById('lang'), LANGS, currentLang
 const toast = createToast(document.body);
 const shareControls = buildShareControls(document.getElementById('share'), {
   strings,
-  onCamera: doShare,
-  onX: () => shareToX({ text: shareText(), url: SITE_URL }),
-  onLine: () => shareToLine({ text: shareText(), url: SITE_URL }),
+  onCamera: () => doShare(null),
+  onX: () => doShare('x'),
+  onLine: () => doShare('line'),
   onCopy: async () => toast.show((await copyLink(SITE_URL)) ? strings().toastCopied : strings().toastFailed),
 });
 
@@ -144,12 +144,16 @@ function shareText() {
   return `${titleFor()}｜${s.shareCta} ${s.shareHashtag}`;
 }
 
-async function doShare() {
+// Capture the current view as a branded PNG, then share it image-first.
+// `service` = null (generic share sheet) | 'x' | 'line'.
+//   • If the browser can share files (mobile / modern), the IMAGE is attached via
+//     the native share sheet — the user picks X / LINE / etc.
+//   • Otherwise (most desktops) X/LINE web composers can't auto-attach an image, so
+//     we save the PNG and open the composer (text + URL) for the user to attach it.
+async function doShare(service = null) {
   try {
     const s = strings();
     const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
-    // In timeline mode label the snapshot with the current frame's date; otherwise
-    // the selected period.
     let scope, date;
     if (timeline.isEntered() && timelineFrames(DATA)[timeline.index]) {
       scope = s.tlDay;
@@ -161,12 +165,19 @@ async function doShare() {
     const header = { title: titleFor(), sub: `${scope} · ${date} ${tz}`.trim() };
     const footer = { brand: s.shareBrand, url: SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, ''), cta: s.shareFooterCta };
     const filename = `heatmap-${currentIndex}-${date || 'view'}.png`;
+    const text = shareText();
     const shot = await captureBrandedPng({ renderer, scene, camera, header, footer, filename });
-    const outcome = await shareOrDownload({
-      file: shot.file, dataUrl: shot.dataUrl, filename,
-      title: titleFor(), text: shareText(), url: SITE_URL,
-    });
-    toast.show(outcome === 'shared' ? s.toastShared : s.toastSaved);
+
+    // 1) Best path — native file share (image attached). User chooses the app.
+    const r = await nativeShareFiles({ file: shot.file, title: titleFor(), text, url: SITE_URL });
+    if (r === 'shared') { toast.show(s.toastShared); return; }
+    if (r === 'cancelled') return;
+
+    // 2) Fallback — save the image, then open the requested composer (text + URL).
+    downloadImage(shot.dataUrl, filename);
+    if (service === 'x') shareToX({ text, url: SITE_URL });
+    else if (service === 'line') shareToLine({ text, url: SITE_URL });
+    toast.show(service ? s.toastSavedAttach : s.toastSaved);
   } catch (err) {
     console.warn('[heatmap] share failed:', err.message);
     toast.show(strings().toastFailed);

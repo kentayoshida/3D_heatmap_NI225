@@ -87,26 +87,34 @@ export async function captureBrandedPng({ renderer, scene, camera, header, foote
   return { blob, file, dataUrl };
 }
 
-// Web Share API Level 2 (share the PNG file itself) with a download fallback.
-// Returns 'shared' or 'downloaded'.
-export async function shareOrDownload({ file, dataUrl, filename, title, text, url }) {
+// Web Share API Level 2 — share the PNG *file itself* (so on mobile the user can
+// pick X / LINE / etc. and the image is attached). Returns:
+//   'shared'      — the OS share sheet handled it (image attached)
+//   'cancelled'   — user dismissed the sheet
+//   'unsupported' — this browser can't share files (use the download fallback)
+//   'error'       — share() threw for another reason
+export async function nativeShareFiles({ file, title, text, url }) {
   const nav = navigator;
   if (typeof nav.share === 'function' && typeof nav.canShare === 'function' && nav.canShare({ files: [file] })) {
     try {
       await nav.share({ files: [file], title, text, url });
       return 'shared';
     } catch (err) {
-      if (err && err.name === 'AbortError') return 'shared'; // user cancelled
-      // otherwise fall through to download
+      return err && err.name === 'AbortError' ? 'cancelled' : 'error';
     }
   }
+  return 'unsupported';
+}
+
+// Save the PNG to disk (fallback when file sharing isn't available, and the way to
+// get the image in hand before opening an X / LINE composer to attach it).
+export function downloadImage(dataUrl, filename) {
   const a = document.createElement('a');
   a.href = dataUrl;
   a.download = filename || 'heatmap.png';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  return 'downloaded';
 }
 
 // Open an X (Twitter) intent tweet composer with the CTA text + URL.
