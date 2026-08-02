@@ -1,0 +1,53 @@
+# Auto-deploy both Cloudflare Workers when their sources land on main.
+#
+# The frontend (public/) is deployed by Cloudflare Pages' own Git integration,
+# but the two Workers (ni225-heatmap-proxy / us-heatmap-proxy) were previously
+# deployed by hand with `wrangler deploy`. That manual step is what let a stale
+# local checkout ship old code (the NASDAQ "sample only" incident). This workflow
+# makes the Workers deploy from the same source of truth as everything else.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  — your Cloudflare account id
+# JQUANTS_API_KEY is NOT needed here: it lives as a Worker secret in Cloudflare
+# and `wrangler deploy` leaves existing secrets untouched.
+name: Deploy Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/worker.js'
+      - 'server/us-worker.js'
+      - 'server/index-params.json'
+      - 'server/us-index-params.json'
+      - 'server/wrangler.toml'
+      - 'server/wrangler-us.toml'
+  workflow_dispatch: {}
+
+jobs:
+  # Gate: never deploy a change that breaks the pure-logic unit tests.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test server/timeline.test.mjs
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      # Deploy both Workers on any Worker-source change (idempotent, fail-safe).
+      matrix:
+        config: [wrangler.toml, wrangler-us.toml]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          command: deploy --config ${{ matrix.config }}

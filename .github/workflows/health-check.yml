@@ -1,0 +1,53 @@
+# Synthetic health check for the three live data proxies.
+#
+# Each proxy returns { "1D": { asOf, constituents:[...] }, ... }. If a Worker
+# hits an error (e.g. Cloudflare's "Too many subrequests" cap) it returns
+# { "error": "..." } instead, and the frontend silently falls back to bundled
+# sample data — which is exactly the failure that went unnoticed before. This job
+# fails (and GitHub emails the repo owner) whenever any endpoint returns an error
+# or an empty constituents list, so a fallback is caught within the cron window
+# instead of by a user.
+#
+# Adjust the cron below to change how often it runs (currently every 6 hours).
+name: Health check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe live endpoints
+        run: |
+          check() {
+            name="$1"; url="$2"
+            body=""
+            for attempt in 1 2 3; do
+              if body=$(curl -fsS --max-time 30 "$url"); then break; fi
+              echo "$name: attempt $attempt failed, retrying..."; sleep 10
+            done
+            if [ -z "$body" ]; then echo "$name: no response after retries"; exit 1; fi
+            printf '%s' "$body" | node -e '
+              let s = "";
+              process.stdin.on("data", d => s += d).on("end", () => {
+                const name = process.argv[1];
+                let j;
+                try { j = JSON.parse(s); }
+                catch { console.error(name + ": invalid JSON"); process.exit(1); }
+                if (j.error) { console.error(name + ": proxy error: " + j.error); process.exit(1); }
+                const c = j["1D"] && j["1D"].constituents;
+                if (!Array.isArray(c) || c.length === 0) {
+                  console.error(name + ": empty/missing constituents"); process.exit(1);
+                }
+                console.log(name + ": OK (" + c.length + " constituents)");
+              });
+            ' "$name"
+          }
+          fail=0
+          check NIKKEI    "https://ni225-heatmap-proxy.kenta0117.workers.dev"            || fail=1
+          check DOW30     "https://us-heatmap-proxy.kenta0117.workers.dev/?index=dow"    || fail=1
+          check NASDAQ100 "https://us-heatmap-proxy.kenta0117.workers.dev/?index=nasdaq" || fail=1
+          exit $fail

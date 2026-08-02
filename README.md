@@ -99,7 +99,34 @@ server/                データプロキシ（Cloudflare Worker）
 
 以後は push で自動デプロイ。カスタムドメインに `3dheatmap.markets-lab.com` を追加します。
 
-データAPI（Worker）は2つあり、それぞれ独立にデプロイします（`server/` 配下）:
+### Worker の自動デプロイ（GitHub Actions）
+
+データAPI（Worker）は2つ（`ni225-heatmap-proxy` / `us-heatmap-proxy`）あります。
+`server/` 配下の Worker ソースが `main` に入ると、GitHub Actions
+（`.github/workflows/deploy-workers.yml`）が**両 Worker を自動デプロイ**します。
+`node --test server/timeline.test.mjs` を先に通すゲート付きで、失敗する変更はデプロイ
+されません。手動起動（`workflow_dispatch`）も可能です。
+
+必要なリポジトリ Secret（Settings → Secrets and variables → Actions）:
+
+| Secret | 用途 |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare の API トークン（権限: **Workers Scripts: Edit**） |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare アカウント ID |
+
+> `JQUANTS_API_KEY` は **CI には不要**です。Cloudflare 側の Worker シークレットに保存済みで、
+> `wrangler deploy` は既存シークレットを上書きしません。
+
+### 監視（ヘルスチェック）
+
+`.github/workflows/health-check.yml` が定期的（既定 6 時間毎・`cron` で調整可）に3エンドポイントを
+叩き、`error` 返却や `constituents` 空を検知したらワークフローを失敗させます（＝ GitHub が
+リポジトリ所有者へメール通知）。「サンプルへ黙ってフォールバック」していた状態を早期に検知
+するための仕組みです。
+
+### 手動デプロイ（緊急時のフォールバック）
+
+CI が使えない場合のみ、`server/` 配下から手動でデプロイできます:
 
 ```bash
 cd server
@@ -111,7 +138,10 @@ wrangler deploy                       # wrangler.toml を使用
 wrangler deploy --config wrangler-us.toml
 ```
 
-デプロイ先URLをフロントの `js/data-source.js` の `CONFIG.endpoints` に設定します
+> 手動デプロイ時は必ず `git pull` で最新 `main` を取得してから実行してください（古いローカル
+> チェックアウトの再デプロイが過去の障害原因でした）。
+
+デプロイ先URLはフロントの `js/data-source.js` の `CONFIG.endpoints` に設定済みです
 （米国は `?index=dow` / `?index=nasdaq` を付与）。いずれかが不達でも、該当指数は
 バンドル済みサンプルに自動フォールバックします。
 

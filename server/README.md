@@ -35,9 +35,16 @@ J-Quants は **V2 で API キー方式**（`x-api-key` ヘッダー、有効期�
 
 ```bash
 npm i -g wrangler
-wrangler secret put JQUANTS_API_KEY   # V2 APIキーを貼り付け
+wrangler secret put JQUANTS_API_KEY   # V2 APIキーを貼り付け（初回のみ）
 wrangler deploy
 ```
+
+> **デプロイは通常 CI が自動実行**します。`server/` の Worker ソースが `main` に入ると
+> `.github/workflows/deploy-workers.yml` が両 Worker をデプロイします（必要な Secret は
+> ルート README「Worker の自動デプロイ」参照）。上記の手動 `wrangler deploy` は緊急時の
+> フォールバックで、その際は必ず `git pull` で最新 `main` を取得してから実行してください。
+> `JQUANTS_API_KEY` は Worker シークレットとして保持され、以後の `wrangler deploy` では
+> 再投入不要です（CI にも渡しません）。
 
 > 動作確認：デプロイ先URLをブラウザ/`curl.exe`で開くとJSONが返ります。
 > 認証やプラン鮮度に問題があると `{"error": "..."}` が返るので原因が分かります。
