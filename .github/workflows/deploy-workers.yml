@@ -47,6 +47,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cloudflare/wrangler-action@v3
         with:
+          # Pin Wrangler v4: v3 (the action's default) bundles an esbuild that
+          # can't parse the import-attributes syntax the Workers use
+          # (`import ... with { type: 'json' }`) and fails the build.
+          wranglerVersion: '4'
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: server
