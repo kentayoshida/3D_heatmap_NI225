@@ -44,7 +44,8 @@ wrangler deploy
 > ルート README「Worker の自動デプロイ」参照）。上記の手動 `wrangler deploy` は緊急時の
 > フォールバックで、その際は必ず `git pull` で最新 `main` を取得してから実行してください。
 > `JQUANTS_API_KEY` は Worker シークレットとして保持され、以後の `wrangler deploy` では
-> 再投入不要です（CI にも渡しません）。
+> 再投入不要です（CI にも渡しません）。CI は **wrangler v4** を使用します（両 Worker が
+> `import ... with { type: 'json' }` を使うため。v3 系ではビルドに失敗します）。
 
 > 動作確認：デプロイ先URLをブラウザ/`curl.exe`で開くとJSONが返ります。
 > 認証やプラン鮮度に問題があると `{"error": "..."}` が返るので原因が分かります。

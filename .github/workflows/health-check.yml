@@ -25,11 +25,16 @@ jobs:
           check() {
             name="$1"; url="$2"
             body=""
+            # 90s timeout: the NIKKEI worker fetches the whole market from
+            # J-Quants (paginated, ~14 dates) and can exceed 30s on a cold
+            # cache — that's slowness, not an outage, so don't false-alarm.
             for attempt in 1 2 3; do
-              if body=$(curl -fsS --max-time 30 "$url"); then break; fi
-              echo "$name: attempt $attempt failed, retrying..."; sleep 10
+              if body=$(curl -fsS --max-time 90 "$url"); then break; fi
+              echo "$name: attempt $attempt failed, retrying..."; sleep 5
             done
-            if [ -z "$body" ]; then echo "$name: no response after retries"; exit 1; fi
+            # return (not exit): let the caller's `|| fail=1` accumulate so all
+            # three endpoints are probed even if an earlier one fails.
+            if [ -z "$body" ]; then echo "$name: no response after retries"; return 1; fi
             printf '%s' "$body" | node -e '
               let s = "";
               process.stdin.on("data", d => s += d).on("end", () => {
