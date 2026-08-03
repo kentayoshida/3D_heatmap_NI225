@@ -295,7 +295,7 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
     );
   }
 
-  planet.position.set(-30, -196, -150); // low, so the ringed planet sits below the field
+  planet.position.set(-72, -196, -150); // low + slightly left of center in the initial view
   planet.rotation.set(0.30, 0, 0.16);   // axial tilt so the rings read as an open ellipse
   scene.add(planet);
 
@@ -310,7 +310,7 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
   station.add(body);
   // The default camera pitches down ~36°, so this world point projects to the open
   // upper-right of the frame, clear of the tall bars.
-  station.position.set(150, -6, -140);
+  station.position.set(132, 14, -142); // upper-right of the initial view (raised, kept in-frame)
   station.rotation.y = -2.05; // aims the baked superlaser dish at the default camera
   scene.add(station);
 
