@@ -266,9 +266,9 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
     );
   }
   const atmo = new THREE.Mesh( // additive back-side shell = cheap atmosphere rim
-    new THREE.SphereGeometry(PR * 1.06, 48, 32),
+    new THREE.SphereGeometry(PR * 1.05, 48, 32),
     new THREE.MeshBasicMaterial({
-      color: 0x5c93d6, transparent: true, opacity: 0.14,
+      color: 0xe6d3ad, transparent: true, opacity: 0.08, // warm + faint (suits Jupiter)
       side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false,
     }),
   );
@@ -277,8 +277,10 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
   // Saturn-like rings in the equatorial plane. Added to the planet group (not the
   // globe), so they hold still while the globe surface spins, and share the axial
   // tilt below. Procedural strip now; swap to a bundled ring image if present.
+  // color multiplies the ring texture — a gentle warm tint pushes the provided
+  // strip toward a golden Saturn tan while keeping its own bands/alpha.
   const ringMat = new THREE.MeshBasicMaterial({
-    map: makeRingTexture(), transparent: true, side: THREE.DoubleSide,
+    map: makeRingTexture(), color: 0xf3ddb6, transparent: true, side: THREE.DoubleSide,
     depthWrite: false, opacity: 0.95,
   });
   const rings = new THREE.Mesh(makeRingGeometry(PR * 1.28, PR * 2.15), ringMat);
