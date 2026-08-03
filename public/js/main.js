@@ -61,6 +61,7 @@ const space = createSpace(scene, {
   assetUrl: './assets/starfield.jpg',  // equirectangular star sky (else procedural)
   planetUrl: './assets/jupiter.jpg',   // equirectangular planet map (else procedural)
   ringUrl: './assets/rings.png',       // ring strip, RGBA radial (else procedural)
+  ssdUrl: './assets/ssd.png',          // detailed SSD silhouette (else procedural)
 });
 
 const camera = new THREE.PerspectiveCamera(50, stage.clientWidth / stage.clientHeight, 0.1, 2000);

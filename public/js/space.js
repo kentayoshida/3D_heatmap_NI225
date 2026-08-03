@@ -424,12 +424,18 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl, ssdUrl, tieUr
   // the planet side and looks up. Nose (+local X) points along the station→fleet
   // travel direction (as if it flew off from the Death Star).
   const fleet = new THREE.Group();
+  // Plane matches the ssd.png aspect (1536x1024 = 3:2); the ship fills the width,
+  // transparent margins top/bottom. Procedural silhouette until the image loads.
   const ssdMat = new THREE.MeshBasicMaterial({ map: makeSSDSilhouetteTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  const ssd = new THREE.Mesh(new THREE.PlaneGeometry(260, 65), ssdMat);
+  const ssd = new THREE.Mesh(new THREE.PlaneGeometry(272, 181), ssdMat);
   ssd.rotation.x = -Math.PI / 2; // lay flat, belly down
   fleet.add(ssd);
   if (ssdUrl) {
-    new THREE.TextureLoader().load(ssdUrl, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; ssdMat.map = t; ssdMat.needsUpdate = true; }, undefined, () => {});
+    new THREE.TextureLoader().load(ssdUrl, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+      t.center.set(0.5, 0.5); t.repeat.x = -1; // image nose is at left → mirror so nose = +X (heading)
+      ssdMat.map = t; ssdMat.needsUpdate = true;
+    }, undefined, () => {});
   }
   const tieMat = new THREE.MeshBasicMaterial({ map: makeTieSilhouetteTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide });
   if (tieUrl) {
@@ -441,7 +447,7 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl, ssdUrl, tieUr
     tie.position.set(ax, 0, az);
     fleet.add(tie);
   }
-  const fleetPos = new THREE.Vector3(0, 84, 55); // foreground + upper (thin sliver peeks at top of initial view)
+  const fleetPos = new THREE.Vector3(0, 87, 52); // foreground + upper (thin sliver peeks at top of initial view)
   const heading = new THREE.Vector3(fleetPos.x - station.position.x, 0, fleetPos.z - station.position.z).normalize();
   fleet.position.copy(fleetPos);
   fleet.rotation.y = Math.atan2(-heading.z, heading.x); // nose points along DS→fleet travel
