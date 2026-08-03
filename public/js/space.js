@@ -277,10 +277,10 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
   // Saturn-like rings in the equatorial plane. Added to the planet group (not the
   // globe), so they hold still while the globe surface spins, and share the axial
   // tilt below. Procedural strip now; swap to a bundled ring image if present.
-  // color multiplies the ring texture — a gentle warm tint pushes the provided
-  // strip toward a golden Saturn tan while keeping its own bands/alpha.
+  // No color tint (white) so the ring strip shows its own original Saturn tones
+  // (rings.png), rather than being pushed toward Jupiter's palette.
   const ringMat = new THREE.MeshBasicMaterial({
-    map: makeRingTexture(), color: 0xf3ddb6, transparent: true, side: THREE.DoubleSide,
+    map: makeRingTexture(), transparent: true, side: THREE.DoubleSide,
     depthWrite: false, opacity: 0.95,
   });
   const rings = new THREE.Mesh(makeRingGeometry(PR * 1.28, PR * 2.15), ringMat);
