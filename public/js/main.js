@@ -7,6 +7,7 @@ import { loadData, CONFIG, INDICES, INDEX_META, hasTimeline } from './data-sourc
 import { LANGS, UI, sectorLabel } from './i18n.js';
 import { captureBrandedPng, nativeShareFiles, downloadImage, shareToX, shareToLine, copyLink } from './share.js';
 import { Timeline } from './timeline.js';
+import { createSpace } from './space.js';
 
 const SITE_URL = 'https://3dheatmap.markets-lab.com/';
 
@@ -52,8 +53,11 @@ renderer.setSize(stage.clientWidth, stage.clientHeight);
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0e14);
-scene.fog = new THREE.Fog(0x0b0e14, 160, 320);
+// Space environment: star/nebula sky (as scene.background, so it parallaxes as the
+// camera orbits), a planet below the field, and a Death-Star-like station upper
+// right — makes the heatmap read as floating in space. Sky uses a bundled
+// equirectangular image if present at assetUrl, else a procedural fallback.
+const space = createSpace(scene, { assetUrl: './assets/starfield.jpg' });
 
 const camera = new THREE.PerspectiveCamera(50, stage.clientWidth / stage.clientHeight, 0.1, 2000);
 camera.position.set(0, 94, 132);
@@ -76,16 +80,20 @@ fill.position.set(-80, 60, -60);
 scene.add(fill);
 
 // ---- ground: 0% baseline plane + grid --------------------------------------
+// Faint "ethereal" baseline against the star field (kept subtle so the field
+// reads as floating, not sitting on a floor — it still marks the 0% plane).
 const planeGeo = new THREE.PlaneGeometry(W + 24, D + 24);
 const plane = new THREE.Mesh(
   planeGeo,
-  new THREE.MeshBasicMaterial({ color: 0x141925, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+  new THREE.MeshBasicMaterial({ color: 0x0a1220, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
 );
 plane.rotation.x = -Math.PI / 2;
 plane.position.y = -0.02;
 scene.add(plane);
 
-const grid = new THREE.GridHelper(Math.max(W, D) + 24, 24, 0x2a3550, 0x1a2233);
+const grid = new THREE.GridHelper(Math.max(W, D) + 24, 24, 0x1b2c4a, 0x0f1a2e);
+grid.material.transparent = true;
+grid.material.opacity = 0.5;
 grid.position.y = 0;
 scene.add(grid);
 
@@ -333,6 +341,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   controls.update();
+  space.update(dt);
   heatmap.update(dt);
   renderer.render(scene, camera);
 }
