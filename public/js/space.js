@@ -178,11 +178,57 @@ function makeStationTexture() {
   return tex;
 }
 
+// ---- Saturn-like ring system ------------------------------------------------
+// A flat annulus in the planet's equatorial plane. RingGeometry's default UVs run
+// around the ring; we remap them so u = radial fraction (0 at inner edge, 1 at
+// outer), which lets a horizontal strip texture paint concentric bands. A bundled
+// strip image can replace the procedural one — same "provide an image, else
+// procedural" pattern as the sky/planet.
+function makeRingGeometry(inner, outer, seg = 220) {
+  const g = new THREE.RingGeometry(inner, outer, seg, 1);
+  const pos = g.attributes.position, uv = g.attributes.uv, v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    uv.setXY(i, (v.length() - inner) / (outer - inner), 0.5); // u = radius, y flat
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
+// Procedural ring strip (radial cross-section): icy-tan bands, a Cassini-like gap,
+// and edge fade. RGBA — the alpha channel is the ring's transparency profile.
+function makeRingTexture() {
+  const w = 1024, h = 16;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  for (let x = 0; x < w; x++) {
+    const u = x / w;
+    let a = 0.8;
+    if (u < 0.05) a *= u / 0.05;                 // inner edge fade
+    if (u > 0.96) a *= (1 - u) / 0.04;           // outer edge fade
+    a *= 1 - 0.92 * Math.exp(-((u - 0.60) ** 2) / (2 * 0.013 ** 2)); // Cassini gap
+    a *= 1 - 0.55 * Math.exp(-((u - 0.38) ** 2) / (2 * 0.02 ** 2));  // fainter gap
+    const b = 158 + 46 * Math.sin(u * 80) + 22 * Math.sin(u * 230);  // banding
+    ctx.fillStyle = `rgba(${b},${Math.round(b * 0.9)},${Math.round(b * 0.74)},${Math.max(0, a)})`;
+    ctx.fillRect(x, 0, 1, h);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 // ---- assemble ---------------------------------------------------------------
 // Builds the sky/planet/station into `scene` and returns { update(dt), planet,
 // station } so the render loop can add gentle rotation. All objects sit well
 // within the camera's far plane (2000).
-export function createSpace(scene, { assetUrl } = {}) {
+//   assetUrl  — equirectangular sky image (else procedural sky)
+//   planetUrl — equirectangular planet map, e.g. Jupiter (else procedural planet)
+//   ringUrl   — horizontal ring strip (RGBA, radial cross-section; else procedural)
+export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
   scene.fog = null; // fog would grey the sky/planet out; depth cueing isn't needed here
 
   // sky: procedural immediately (no blank first frame); swap to a bundled
@@ -203,14 +249,22 @@ export function createSpace(scene, { assetUrl } = {}) {
     );
   }
 
-  // planet, low and behind the field (large; only its upper limb is in frame)
+  // planet, low and behind the field (large; only its upper limb is in frame).
+  // Procedural surface immediately; swap to a bundled equirectangular map
+  // (e.g. Jupiter) if present — keeps the app self-contained if it's missing.
   const planet = new THREE.Group();
-  const PR = 110;
-  const globe = new THREE.Mesh(
-    new THREE.SphereGeometry(PR, 64, 48),
-    new THREE.MeshStandardMaterial({ map: makePlanetTexture(), roughness: 1, metalness: 0 }),
-  );
+  const PR = 96;
+  const globeMat = new THREE.MeshStandardMaterial({ map: makePlanetTexture(), roughness: 1, metalness: 0 });
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(PR, 64, 48), globeMat);
   planet.add(globe);
+  if (planetUrl) {
+    new THREE.TextureLoader().load(
+      planetUrl,
+      (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; globeMat.map = tex; globeMat.needsUpdate = true; },
+      undefined,
+      () => { /* no image bundled — procedural planet stays */ },
+    );
+  }
   const atmo = new THREE.Mesh( // additive back-side shell = cheap atmosphere rim
     new THREE.SphereGeometry(PR * 1.06, 48, 32),
     new THREE.MeshBasicMaterial({
@@ -219,8 +273,28 @@ export function createSpace(scene, { assetUrl } = {}) {
     }),
   );
   planet.add(atmo);
-  planet.position.set(-34, -150, -120);
-  planet.rotation.z = 0.18; // slight axial tilt
+
+  // Saturn-like rings in the equatorial plane. Added to the planet group (not the
+  // globe), so they hold still while the globe surface spins, and share the axial
+  // tilt below. Procedural strip now; swap to a bundled ring image if present.
+  const ringMat = new THREE.MeshBasicMaterial({
+    map: makeRingTexture(), transparent: true, side: THREE.DoubleSide,
+    depthWrite: false, opacity: 0.95,
+  });
+  const rings = new THREE.Mesh(makeRingGeometry(PR * 1.28, PR * 2.15), ringMat);
+  rings.rotation.x = -Math.PI / 2; // lay flat into the equatorial (XZ) plane
+  planet.add(rings);
+  if (ringUrl) {
+    new THREE.TextureLoader().load(
+      ringUrl,
+      (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; ringMat.map = tex; ringMat.needsUpdate = true; },
+      undefined,
+      () => { /* no image bundled — procedural rings stay */ },
+    );
+  }
+
+  planet.position.set(-30, -196, -150); // low, so the ringed planet sits below the field
+  planet.rotation.set(0.30, 0, 0.16);   // axial tilt so the rings read as an open ellipse
   scene.add(planet);
 
   // Death-Star-like station, upper right and behind. rotation.y is tuned so the

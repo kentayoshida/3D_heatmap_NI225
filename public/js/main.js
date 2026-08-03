@@ -57,7 +57,11 @@ const scene = new THREE.Scene();
 // camera orbits), a planet below the field, and a Death-Star-like station upper
 // right — makes the heatmap read as floating in space. Sky uses a bundled
 // equirectangular image if present at assetUrl, else a procedural fallback.
-const space = createSpace(scene, { assetUrl: './assets/starfield.jpg' });
+const space = createSpace(scene, {
+  assetUrl: './assets/starfield.jpg',  // equirectangular star sky (else procedural)
+  planetUrl: './assets/jupiter.jpg',   // equirectangular planet map (else procedural)
+  ringUrl: './assets/rings.png',       // ring strip, RGBA radial (else procedural)
+});
 
 const camera = new THREE.PerspectiveCamera(50, stage.clientWidth / stage.clientHeight, 0.1, 2000);
 camera.position.set(0, 94, 132);
