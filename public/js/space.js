@@ -221,6 +221,108 @@ function makeRingTexture() {
   return tex;
 }
 
+// ---- fleet silhouettes (drawn once; used on flat planes, belly-down) ---------
+// SSD ("Executor-like") lower silhouette: an elongated dagger with a command
+// superstructure near the stern, faint panel/trench lines, and engine glow at the
+// tail. Near-black on transparent, so it reads as a backlit silhouette.
+function makeSSDSilhouetteTexture() {
+  const w = 2048, h = 512;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const cy = h * 0.5;
+  const noseX = w * 0.98, sternX = w * 0.06;
+  const halfBeam = h * 0.42; // half-height at the stern
+  const span = noseX - sternX;
+
+  // main dagger body (nose point → wide stern)
+  ctx.beginPath();
+  ctx.moveTo(noseX, cy);
+  ctx.lineTo(sternX, cy - halfBeam);
+  ctx.lineTo(sternX, cy + halfBeam);
+  ctx.closePath();
+  ctx.fillStyle = '#080910';
+  ctx.fill();
+
+  // faint surface trench lines converging toward the nose (texture only)
+  ctx.strokeStyle = 'rgba(120,128,145,0.16)';
+  ctx.lineWidth = 2;
+  for (let k = 1; k <= 6; k++) {
+    const t = k / 7;
+    const y = cy + (k % 2 ? -1 : 1) * halfBeam * t * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(sternX + span * 0.02, y);
+    ctx.lineTo(sternX + span * (1 - t), cy + (y - cy) * 0.1);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(90,98,115,0.22)'; // central spine
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(noseX, cy); ctx.lineTo(sternX, cy); ctx.stroke();
+
+  // command superstructure (trapezoid) + bridge tower near the stern
+  const sx0 = sternX + span * 0.10, sx1 = sternX + span * 0.30, sh = halfBeam * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(sx0, cy - sh); ctx.lineTo(sx1, cy - sh * 0.7);
+  ctx.lineTo(sx1, cy + sh * 0.7); ctx.lineTo(sx0, cy + sh);
+  ctx.closePath();
+  ctx.fillStyle = '#0e1017'; ctx.fill();
+  ctx.strokeStyle = 'rgba(140,150,170,0.22)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#12151d';
+  ctx.fillRect(sx0 + (sx1 - sx0) * 0.3, cy - sh * 0.35, (sx1 - sx0) * 0.4, sh * 0.7);
+
+  // engine glow at the very stern
+  for (let i = -2; i <= 2; i++) {
+    const gy = cy + i * (halfBeam * 0.28);
+    const g = ctx.createRadialGradient(sternX, gy, 0, sternX, gy, 26);
+    g.addColorStop(0, 'rgba(150,200,255,0.8)');
+    g.addColorStop(1, 'rgba(150,200,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sternX, gy, 26, 0, Math.PI * 2); ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// TIE-fighter lower silhouette: central pod + two hexagonal wing panels.
+function makeTieSilhouetteTexture() {
+  const w = 512, h = 320;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2, DARK = '#0a0b12';
+  const wingW = w * 0.26, wingH = h * 0.9, gap = w * 0.30;
+  ctx.fillStyle = DARK;
+  ctx.strokeStyle = 'rgba(150,152,158,0.16)'; // faint neutral rim (reads against dark sky)
+  ctx.lineWidth = 3;
+  for (const sgn of [-1, 1]) { // two hexagonal wings
+    const wx = cx + sgn * gap;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI / 6 + k * Math.PI / 3;
+      const px = wx + Math.cos(a) * wingW * 0.5, py = cy + Math.sin(a) * wingH * 0.5;
+      k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = DARK; // connecting struts
+  ctx.fillRect(cx - gap, cy - h * 0.05, gap * 2, h * 0.10);
+  ctx.beginPath(); ctx.arc(cx, cy, h * 0.22, 0, Math.PI * 2); ctx.fill(); // central pod
+  ctx.strokeStyle = 'rgba(150,152,158,0.18)';
+  ctx.beginPath(); ctx.arc(cx, cy, h * 0.22, 0, Math.PI * 2); ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 // ---- assemble ---------------------------------------------------------------
 // Builds the sky/planet/station into `scene` and returns { update(dt), planet,
 // station } so the render loop can add gentle rotation. All objects sit well
@@ -228,7 +330,8 @@ function makeRingTexture() {
 //   assetUrl  — equirectangular sky image (else procedural sky)
 //   planetUrl — equirectangular planet map, e.g. Jupiter (else procedural planet)
 //   ringUrl   — horizontal ring strip (RGBA, radial cross-section; else procedural)
-export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
+//   ssdUrl/tieUrl — optional silhouette PNGs for the fleet (else procedural)
+export function createSpace(scene, { assetUrl, planetUrl, ringUrl, ssdUrl, tieUrl } = {}) {
   scene.fog = null; // fog would grey the sky/planet out; depth cueing isn't needed here
 
   // sky: procedural immediately (no blank first frame); swap to a bundled
@@ -314,8 +417,38 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl } = {}) {
   station.rotation.y = -2.05; // aims the baked superlaser dish at the default camera
   scene.add(station);
 
+  // Fleet: an SSD-like dreadnought (lower silhouette only) with two TIE fighters
+  // leading ahead of it, as if launched from the station. The planes lie flat
+  // (belly down) high in the foreground: nearly edge-on / subtle in the initial
+  // view, and revealed as underside silhouettes when the camera swings ~180° to
+  // the planet side and looks up. Nose (+local X) points along the station→fleet
+  // travel direction (as if it flew off from the Death Star).
+  const fleet = new THREE.Group();
+  const ssdMat = new THREE.MeshBasicMaterial({ map: makeSSDSilhouetteTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const ssd = new THREE.Mesh(new THREE.PlaneGeometry(260, 65), ssdMat);
+  ssd.rotation.x = -Math.PI / 2; // lay flat, belly down
+  fleet.add(ssd);
+  if (ssdUrl) {
+    new THREE.TextureLoader().load(ssdUrl, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; ssdMat.map = t; ssdMat.needsUpdate = true; }, undefined, () => {});
+  }
+  const tieMat = new THREE.MeshBasicMaterial({ map: makeTieSilhouetteTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  if (tieUrl) {
+    new THREE.TextureLoader().load(tieUrl, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; tieMat.map = t; tieMat.needsUpdate = true; }, undefined, () => {});
+  }
+  for (const [ax, az] of [[158, 30], [212, -24]]) { // two TIEs leading ahead (+X), spread
+    const tie = new THREE.Mesh(new THREE.PlaneGeometry(26, 16), tieMat);
+    tie.rotation.x = -Math.PI / 2;
+    tie.position.set(ax, 0, az);
+    fleet.add(tie);
+  }
+  const fleetPos = new THREE.Vector3(0, 84, 55); // foreground + upper (thin sliver peeks at top of initial view)
+  const heading = new THREE.Vector3(fleetPos.x - station.position.x, 0, fleetPos.z - station.position.z).normalize();
+  fleet.position.copy(fleetPos);
+  fleet.rotation.y = Math.atan2(-heading.z, heading.x); // nose points along DS→fleet travel
+  scene.add(fleet);
+
   return {
-    planet, station,
+    planet, station, fleet,
     update(dt) {
       globe.rotation.y += dt * 0.012;   // slow gas-giant spin
       station.rotation.y += dt * 0.02;  // slow station spin
