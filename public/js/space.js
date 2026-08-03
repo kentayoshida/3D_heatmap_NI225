@@ -447,7 +447,7 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl, ssdUrl, tieUr
     tie.position.set(ax, 0, az);
     fleet.add(tie);
   }
-  const fleetPos = new THREE.Vector3(0, 87, 52); // foreground + upper (thin sliver peeks at top of initial view)
+  const fleetPos = new THREE.Vector3(0, 140, 150); // ~2x further (up + forward): footprint clears the field and sits well above it
   const heading = new THREE.Vector3(fleetPos.x - station.position.x, 0, fleetPos.z - station.position.z).normalize();
   fleet.position.copy(fleetPos);
   fleet.rotation.y = Math.atan2(-heading.z, heading.x); // nose points along DS→fleet travel
