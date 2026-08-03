@@ -424,16 +424,16 @@ export function createSpace(scene, { assetUrl, planetUrl, ringUrl, ssdUrl, tieUr
   // the planet side and looks up. Nose (+local X) points along the station→fleet
   // travel direction (as if it flew off from the Death Star).
   const fleet = new THREE.Group();
-  // Plane matches the ssd.png aspect (1536x1024 = 3:2); the ship fills the width,
-  // transparent margins top/bottom. Procedural silhouette until the image loads.
+  // Plane matches the ssd.png aspect (685x193 ≈ 3.55:1); the ship fills the frame.
+  // Procedural silhouette until the image loads. The image's nose is at the right
+  // (+X), which the fleet yaw aligns with the station→fleet travel direction.
   const ssdMat = new THREE.MeshBasicMaterial({ map: makeSSDSilhouetteTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  const ssd = new THREE.Mesh(new THREE.PlaneGeometry(272, 181), ssdMat);
+  const ssd = new THREE.Mesh(new THREE.PlaneGeometry(272, 77), ssdMat);
   ssd.rotation.x = -Math.PI / 2; // lay flat, belly down
   fleet.add(ssd);
   if (ssdUrl) {
     new THREE.TextureLoader().load(ssdUrl, (t) => {
       t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-      t.center.set(0.5, 0.5); t.repeat.x = -1; // image nose is at left → mirror so nose = +X (heading)
       ssdMat.map = t; ssdMat.needsUpdate = true;
     }, undefined, () => {});
   }
