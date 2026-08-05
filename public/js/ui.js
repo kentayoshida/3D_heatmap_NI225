@@ -221,30 +221,82 @@ export function createToast(parent) {
 // (so the user sees progress is being made) + a first-load hint. `el` is the
 // #loading element already present in the HTML (visible before JS runs); `strings`
 // is a getter. Returns { show, hide } — both idempotent.
+//
+// Hyperspace mode (show({ hyperspace: true }), first load only): a bundled MP4
+// (#ld-video) plays full-screen behind the caption while data is fetched. On
+// hide() the veil holds for a brief minimum so the effect registers, then flashes
+// white (#ld-flash) — "dropping out of hyperspace" — and fades to reveal the scene.
+// If the video is absent or can't play, it falls back to the plain spinner veil.
+const MIN_HYPER_MS = 1600; // keep the jump visible even when data loads fast
+const FLASH_PEAK_MS = 190; // add .hidden near the flash's white peak (see ld-jumpout)
+
 export function createLoading(el, strings) {
   if (!el) return { show() {}, hide() {} };
   const text = el.querySelector('.ld-text');
   const elapsed = el.querySelector('.ld-elapsed');
   const hint = el.querySelector('.ld-hint');
-  let timer = null, start = 0;
+  const video = el.querySelector('#ld-video');
+  const flash = el.querySelector('#ld-flash');
+  let timer = null, start = 0, hyper = false, hiding = false;
+
   const paint = () => {
     const s = strings();
-    if (text) text.textContent = `${s.loading}…`;
+    if (text) text.textContent = `${hyper ? (s.hyperLoading || s.loading) : s.loading}…`;
     if (hint) hint.textContent = s.loadingHint;
     if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - start) / 1000)}${s.sec}`;
   };
+
+  // Show the clip only once it can actually display a frame; until then (and if it
+  // never can — missing file / autoplay blocked) the plain spinner veil stays.
+  const enableVideo = () => { if (hyper && video && !video.error) el.classList.add('has-video'); };
+  const disableVideo = () => el.classList.remove('has-video');
+  if (video) {
+    video.addEventListener('canplay', enableVideo);
+    video.addEventListener('loadeddata', enableVideo);
+    video.addEventListener('error', disableVideo);
+  }
+
+  const finishHide = () => {
+    // "Drop out of hyperspace" flash only when the clip was actually showing;
+    // a spinner-only (fallback) veil just fades.
+    if (flash && el.classList.contains('has-video')) {
+      flash.classList.add('jumping');                 // white light-speed exit
+      setTimeout(() => el.classList.add('hidden'), FLASH_PEAK_MS);
+    } else {
+      el.classList.add('hidden');
+    }
+  };
+
   return {
-    show() {
+    show({ hyperspace = false } = {}) {
       start = Date.now();
+      hyper = hyperspace;
+      hiding = false;
+      if (flash) flash.classList.remove('jumping');
       el.classList.remove('hidden');
+      el.classList.remove('has-video');
+      if (hyperspace && video) {
+        if (video.readyState >= 2) enableVideo();       // already buffered a frame
+        const p = video.play();                          // kick playback (also fires canplay)
+        if (p && typeof p.catch === 'function') p.catch(() => {}); // blocked → spinner stays
+      } else if (video) {
+        video.pause();
+      }
       paint();
       clearInterval(timer);
       timer = setInterval(paint, 250);
     },
     hide() {
+      if (hiding) return;                              // idempotent (called from rAF + timeout)
+      hiding = true;
       clearInterval(timer);
       timer = null;
-      el.classList.add('hidden');
+      // On first load, hold the veil a beat so the jump always registers even when
+      // data loads fast (no effect on the real multi-second cold load, where elapsed
+      // already exceeds the minimum). By the time finishHide runs the video has
+      // settled, so it reliably decides flash (clip shown) vs plain fade (fallback).
+      const wait = hyper ? Math.max(0, MIN_HYPER_MS - (Date.now() - start)) : 0;
+      if (wait > 0) setTimeout(finishHide, wait); else finishHide();
     },
   };
 }

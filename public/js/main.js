@@ -30,9 +30,11 @@ const sectorFor = (sector) => sectorLabel(sector, currentLang);
 const titleFor = () => INDEX_META[currentIndex].title[currentLang];
 
 // Loading veil (already visible from the HTML) — start its elapsed counter now,
-// while the first index's data is fetched and the scene is built.
+// while the first index's data is fetched and the scene is built. First load plays
+// the hyperspace clip; on arrival it flashes and reveals the scene. (Index switches
+// below call loading.show() without hyperspace → the plain spinner veil.)
 const loading = createLoading(document.getElementById('loading'), strings);
-loading.show();
+loading.show({ hyperspace: true });
 
 // Bundled sample by default; point data-source.js CONFIG.endpoints at backends to
 // go live. Top-level await keeps the rest of setup unchanged.

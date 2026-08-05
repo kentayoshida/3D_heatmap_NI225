@@ -197,7 +197,45 @@ html, body {
   transition: opacity .4s ease;
 }
 #loading.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
-.ld-box { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 0 24px; }
+
+/* Hyperspace clip: full-screen behind the caption. Hidden until createLoading
+   confirms it can play (js adds #loading.has-video); on failure the solid veil +
+   spinner remain. */
+#ld-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: none;
+  z-index: 0;
+}
+#loading.has-video #ld-video { display: block; }
+#loading.has-video .ld-spinner { display: none; }      /* the clip is the progress cue */
+/* Subtle scrim so the caption stays legible over bright star streaks. */
+#loading.has-video .ld-box {
+  background: radial-gradient(ellipse at center, rgba(4, 8, 18, 0.55), rgba(4, 8, 18, 0) 72%);
+  padding: 18px 34px;
+  border-radius: 16px;
+}
+#loading.has-video .ld-text,
+#loading.has-video .ld-elapsed,
+#loading.has-video .ld-hint { text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+
+/* "Jump out of hyperspace" white flash on arrival (.jumping toggles it). */
+#ld-flash {
+  position: absolute; inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+#ld-flash.jumping { animation: ld-jumpout 0.55s ease-out forwards; }
+@keyframes ld-jumpout {
+  0%   { opacity: 0; }
+  35%  { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+.ld-box { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 0 24px; }
 .ld-spinner {
   width: 46px; height: 46px;
   border-radius: 50%;

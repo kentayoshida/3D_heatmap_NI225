@@ -28,7 +28,7 @@ export const UI = {
     // timeline animation
     tlLabel: '直近5営業日', tlPlay: '再生', tlPause: '一時停止', tlDay: '日次',
     // loading overlay
-    loading: '読み込み中', loadingHint: '初回はデータ取得に時間がかかる場合があります', sec: '秒',
+    loading: '読み込み中', hyperLoading: 'ハイパースペース航行中', loadingHint: '初回はデータ取得に時間がかかる場合があります', sec: '秒',
   },
   en: {
     langLabel: 'EN',
@@ -52,6 +52,8 @@ export const UI = {
     toastCopied: 'Link copied', toastFailed: 'Share failed',
     // timeline animation
     tlLabel: 'Last 5 sessions', tlPlay: 'Play', tlPause: 'Pause', tlDay: 'Daily',
+    // loading overlay
+    loading: 'Loading', hyperLoading: 'Jumping to lightspeed', loadingHint: 'The first load can take a moment to fetch data', sec: 's',
   },
 };
 
