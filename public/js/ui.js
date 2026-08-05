@@ -232,7 +232,7 @@ export function createToast(parent) {
 //
 // Segment boundaries (seconds) — the supplied clip is entry 0-4 / cruise 4-10 /
 // exit 11-14. Tunable to the actual asset.
-const SEG = { ENTRY_END: 4.0, CRUISE_START: 4.0, CRUISE_END: 10.0, EXIT_START: 11.0, EXIT_END: 14.0 };
+const SEG = { ENTRY_END: 5.0, CRUISE_START: 5.1, CRUISE_END: 10.0, EXIT_START: 10.1, EXIT_END: 13.0 };
 
 export function createLoading(el, strings) {
   if (!el) return { show() {}, hide() {} };
