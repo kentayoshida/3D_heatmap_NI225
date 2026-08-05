@@ -241,7 +241,7 @@ export function createLoading(el, strings) {
   const hint = el.querySelector('.ld-hint');
   const video = el.querySelector('#ld-video');
   let timer = null, start = 0, hyper = false;
-  let arriving = false, exiting = false, revealed = false, raf = 0;
+  let arriving = false, exiting = false, revealed = false, cruised = false, raf = 0;
 
   const paint = () => {
     const s = strings();
@@ -269,8 +269,17 @@ export function createLoading(el, strings) {
     const p = video.play(); if (p && p.catch) p.catch(() => {});
   }
 
-  // rAF driver: cruise-loop while waiting; on arrival finish the entry then play the
-  // exit; reveal when the exit reaches the end.
+  // Loop back into the cruise window. `cruised` marks that the entry has already
+  // played once, so we never replay it. Seeks are exact (the clip is all-keyframe).
+  function loopCruise() {
+    cruised = true;
+    try { video.currentTime = SEG.CRUISE_START; } catch (_) {}
+    if (video.paused) { const p = video.play(); if (p && p.catch) p.catch(() => {}); }
+  }
+
+  // rAF driver: play the entry once, then loop strictly within [CRUISE_START,
+  // CRUISE_END] while waiting; on arrival finish the entry then play the exit and
+  // reveal at its end.
   function tick() {
     raf = 0;
     if (revealed) return;
@@ -280,9 +289,11 @@ export function createLoading(el, strings) {
         if (video.ended || ct >= SEG.EXIT_END) { reveal(); return; }
       } else if (arriving) {
         if (ct >= SEG.ENTRY_END) startExit();           // entry done → exit (cinematic full)
-      } else if (ct >= SEG.CRUISE_END) {
-        video.currentTime = SEG.CRUISE_START;           // endless cruise while waiting
-      }
+      } else if (!cruised) {
+        if (ct >= SEG.CRUISE_END) loopCruise();          // entry + first cruise done → start looping
+      } else if (ct >= SEG.CRUISE_END || ct < SEG.CRUISE_START - 0.15) {
+        loopCruise();                                    // clamp the playhead inside the cruise window
+      }                                                  // (never lets it drift back into the entry)
     }
     raf = requestAnimationFrame(tick);
   }
@@ -292,7 +303,11 @@ export function createLoading(el, strings) {
     video.addEventListener('canplay', enableVideo);
     video.addEventListener('loadeddata', enableVideo);
     video.addEventListener('error', disableVideo);
-    video.addEventListener('ended', () => { if (exiting) reveal(); });
+    video.addEventListener('ended', () => {
+      if (revealed) return;
+      if (exiting || arriving) { reveal(); return; }     // arrival: exit (or clip) finished → scene
+      loopCruise();                                       // ran to the end while still waiting → keep cruising
+    });
   }
 
   return {
