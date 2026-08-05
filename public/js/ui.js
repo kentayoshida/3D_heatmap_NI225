@@ -223,12 +223,16 @@ export function createToast(parent) {
 // is a getter. Returns { show, hide } — both idempotent.
 //
 // Hyperspace mode (show({ hyperspace: true }), first load only): a bundled MP4
-// (#ld-video) plays full-screen behind the caption while data is fetched. On
-// hide() the veil holds for a brief minimum so the effect registers, then flashes
-// white (#ld-flash) — "dropping out of hyperspace" — and fades to reveal the scene.
-// If the video is absent or can't play, it falls back to the plain spinner veil.
-const MIN_HYPER_MS = 1600; // keep the jump visible even when data loads fast
-const FLASH_PEAK_MS = 190; // add .hidden near the flash's white peak (see ld-jumpout)
+// (#ld-video) plays full-screen behind the caption while data is fetched. Playback
+// is driven by segment (playhead), not the native `loop`, to match a clip that has
+// three phases: entry → cruise (looped while waiting) → exit (dropping out to normal
+// space). On hide() the entry is allowed to finish (cinematic), then the exit segment
+// plays and a short cross-fade reveals the scene. If the video is absent or can't
+// play, it falls back to the plain spinner veil.
+//
+// Segment boundaries (seconds) — the supplied clip is entry 0-4 / cruise 4-10 /
+// exit 11-14. Tunable to the actual asset.
+const SEG = { ENTRY_END: 4.0, CRUISE_START: 4.0, CRUISE_END: 10.0, EXIT_START: 11.0, EXIT_END: 14.0 };
 
 export function createLoading(el, strings) {
   if (!el) return { show() {}, hide() {} };
@@ -236,8 +240,8 @@ export function createLoading(el, strings) {
   const elapsed = el.querySelector('.ld-elapsed');
   const hint = el.querySelector('.ld-hint');
   const video = el.querySelector('#ld-video');
-  const flash = el.querySelector('#ld-flash');
-  let timer = null, start = 0, hyper = false, hiding = false;
+  let timer = null, start = 0, hyper = false;
+  let arriving = false, exiting = false, revealed = false, raf = 0;
 
   const paint = () => {
     const s = strings();
@@ -247,38 +251,63 @@ export function createLoading(el, strings) {
   };
 
   // Show the clip only once it can actually display a frame; until then (and if it
-  // never can — missing file / autoplay blocked) the plain spinner veil stays.
+  // never can — missing file / undecodable / autoplay blocked) the spinner veil stays.
   const enableVideo = () => { if (hyper && video && !video.error) el.classList.add('has-video'); };
-  const disableVideo = () => el.classList.remove('has-video');
+  const disableVideo = () => { el.classList.remove('has-video'); if (arriving) reveal(); };
+
+  function reveal() {                                   // cross-fade veil → scene
+    if (revealed) return;
+    revealed = true;
+    cancelAnimationFrame(raf); raf = 0;
+    clearInterval(timer); timer = null;
+    el.classList.add('hidden');
+  }
+
+  function startExit() {
+    exiting = true;
+    try { video.currentTime = SEG.EXIT_START; } catch (_) {}
+    const p = video.play(); if (p && p.catch) p.catch(() => {});
+  }
+
+  // rAF driver: cruise-loop while waiting; on arrival finish the entry then play the
+  // exit; reveal when the exit reaches the end.
+  function tick() {
+    raf = 0;
+    if (revealed) return;
+    if (el.classList.contains('has-video') && video && !video.error) {
+      const ct = video.currentTime;
+      if (exiting) {
+        if (video.ended || ct >= SEG.EXIT_END) { reveal(); return; }
+      } else if (arriving) {
+        if (ct >= SEG.ENTRY_END) startExit();           // entry done → exit (cinematic full)
+      } else if (ct >= SEG.CRUISE_END) {
+        video.currentTime = SEG.CRUISE_START;           // endless cruise while waiting
+      }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  function startTick() { if (!raf) raf = requestAnimationFrame(tick); }
+
   if (video) {
     video.addEventListener('canplay', enableVideo);
     video.addEventListener('loadeddata', enableVideo);
     video.addEventListener('error', disableVideo);
+    video.addEventListener('ended', () => { if (exiting) reveal(); });
   }
-
-  const finishHide = () => {
-    // "Drop out of hyperspace" flash only when the clip was actually showing;
-    // a spinner-only (fallback) veil just fades.
-    if (flash && el.classList.contains('has-video')) {
-      flash.classList.add('jumping');                 // white light-speed exit
-      setTimeout(() => el.classList.add('hidden'), FLASH_PEAK_MS);
-    } else {
-      el.classList.add('hidden');
-    }
-  };
 
   return {
     show({ hyperspace = false } = {}) {
       start = Date.now();
       hyper = hyperspace;
-      hiding = false;
-      if (flash) flash.classList.remove('jumping');
+      arriving = exiting = revealed = false;
       el.classList.remove('hidden');
       el.classList.remove('has-video');
       if (hyperspace && video) {
-        if (video.readyState >= 2) enableVideo();       // already buffered a frame
+        try { video.currentTime = 0; } catch (_) {}     // start from the entry
+        if (video.readyState >= 2) enableVideo();        // already buffered a frame
         const p = video.play();                          // kick playback (also fires canplay)
-        if (p && typeof p.catch === 'function') p.catch(() => {}); // blocked → spinner stays
+        if (p && p.catch) p.catch(() => {});             // blocked → spinner stays
+        startTick();
       } else if (video) {
         video.pause();
       }
@@ -287,16 +316,24 @@ export function createLoading(el, strings) {
       timer = setInterval(paint, 250);
     },
     hide() {
-      if (hiding) return;                              // idempotent (called from rAF + timeout)
-      hiding = true;
-      clearInterval(timer);
-      timer = null;
-      // On first load, hold the veil a beat so the jump always registers even when
-      // data loads fast (no effect on the real multi-second cold load, where elapsed
-      // already exceeds the minimum). By the time finishHide runs the video has
-      // settled, so it reliably decides flash (clip shown) vs plain fade (fallback).
-      const wait = hyper ? Math.max(0, MIN_HYPER_MS - (Date.now() - start)) : 0;
-      if (wait > 0) setTimeout(finishHide, wait); else finishHide();
+      if (revealed || arriving) return;                  // idempotent (rAF + timeout callers)
+      if (!hyper) { reveal(); return; }                  // index switch etc. → plain fade
+      if (!video || video.error || !el.classList.contains('has-video')) {
+        // No usable clip yet. Give a decodable clip a brief chance to become ready
+        // (it may still be buffering), else fall back to a plain fade.
+        if (video && !video.error) {
+          const onReady = () => { if (!revealed) { arriving = true; startTick(); } };
+          video.addEventListener('canplay', onReady, { once: true });
+          setTimeout(() => {
+            video.removeEventListener('canplay', onReady);
+            if (!arriving && !revealed) reveal();
+          }, 4000);
+          return;
+        }
+        reveal(); return;
+      }
+      arriving = true;                                   // clip is playing → run entry→exit→reveal
+      startTick();
     },
   };
 }

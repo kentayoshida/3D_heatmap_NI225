@@ -14,15 +14,16 @@
     <!-- Loading veil: visible immediately (before the module runs); hidden once the
          first heatmap frame is painted. JS fills the elapsed counter + localized text.
          On first load a full-screen hyperspace clip plays behind the caption (if the
-         bundled MP4 is present); on arrival it flashes white and reveals the scene.
-         Missing/failed video falls back to the spinner. -->
+         bundled MP4 is present): entry → cruising loop while data loads → on arrival
+         the clip's exit-to-normal-space segment plays, then a short cross-fade reveals
+         the scene. Missing/failed video falls back to the spinner. -->
     <div id="loading">
-      <!-- Hyperspace clip (muted+autoplay+loop). Hidden unless createLoading enables it. -->
-      <video id="ld-video" muted loop playsinline preload="auto" autoplay aria-hidden="true">
+      <!-- Hyperspace clip. Playback is segment-driven by createLoading (entry 0-4s →
+           cruise 4-10s loop → exit 11s+ on arrival), so no native `loop`. Hidden
+           unless createLoading confirms it can play. -->
+      <video id="ld-video" muted playsinline preload="auto" autoplay aria-hidden="true">
         <source src="./assets/hyperspace.mp4" type="video/mp4" />
       </video>
-      <!-- White "jump out of hyperspace" flash on arrival. -->
-      <div id="ld-flash" aria-hidden="true"></div>
       <div class="ld-box">
         <div class="ld-spinner" aria-hidden="true"></div>
         <div class="ld-text">Now Loading…</div>

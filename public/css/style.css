@@ -194,7 +194,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  transition: opacity .4s ease;
+  transition: opacity .5s ease; /* cross-fade from the clip's last frame to the scene */
 }
 #loading.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
 
@@ -219,21 +219,6 @@ html, body {
 #loading.has-video .ld-text,
 #loading.has-video .ld-elapsed,
 #loading.has-video .ld-hint { text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
-
-/* "Jump out of hyperspace" white flash on arrival (.jumping toggles it). */
-#ld-flash {
-  position: absolute; inset: 0;
-  background: #fff;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-#ld-flash.jumping { animation: ld-jumpout 0.55s ease-out forwards; }
-@keyframes ld-jumpout {
-  0%   { opacity: 0; }
-  35%  { opacity: 0.95; }
-  100% { opacity: 0; }
-}
 
 .ld-box { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 0 24px; }
 .ld-spinner {
