@@ -269,9 +269,15 @@ Yahoo は **APIキー不要** ですが、ブラウザ直叩き（CORS）とレ�
   `node server/build-us-params.mjs` で `server/us-index-params.json` を生成します。
 - **NASDAQのウェイトを最新化**するには、Invesco QQQ の保有CSVを
   `server/qqq_holdings.csv` に置いて（`Ticker` / `Name` / `Weight` / `Sector` 列）再ビルドします。
-- **SENSEX / NIFTY のウェイトを最新化**するには、`server/sensex_weights.csv` /
+- **時価総額加重の半自動ウェイト**（NASDAQ / SENSEX / Nifty）：Worker は各銘柄のウェイトを
+  **params 基準日（`asOfParams`）からの株価変動に応じてライブ再計算**します（浮動株プロキシ：
+  ウェイト ∝ 基準ウェイト × 現在値/基準値 を100%に再正規化）。浮動株数はリバランス間ほぼ一定
+  という前提で、**日々の値動きには自動追従**します。手動更新は**構成銘柄・浮動株が変わる
+  リバランス時（SENSEX＝6/12月、Nifty＝3/9月）だけ**で十分です。
+- **SENSEX / NIFTY の基準ウェイトを更新**するには、`server/sensex_weights.csv` /
   `server/nifty_weights.csv`（`Ticker`＝コード, `Weight`＝% の列）を置いて再ビルドします
   （CSVがあれば同梱シードより優先。SENSEX・Nifty は時価総額加重で `^BSESN` / `^NSEI` を使用）。
+  再ビルド時に `asOfParams` が更新され、以降その日を基準に株価追従します。
 - DOWは株価加重のため、Workerが `^DJI` から除数を導出します（ウェイト不要）。
 - Yahoo は非公式APIのため、レート制限や仕様変更で不安定になる場合があります。その際は
   該当指数がサンプルへフォールバックします（恒常運用ではAPIキー型プロバイダへ差し替え可）。

@@ -95,9 +95,41 @@ async function buildIndex(index) {
     throw new Error(`Yahoo returned too few series (${ok}/${codes.length}) — rate limited?`);
   }
 
-  const out = shapeAllPeriods(index, cfg, seriesByCode, indexLevel);
-  out.TIMELINE = buildTimeline(index, cfg, seriesByCode, indexSeries);
+  // Cap-weighted indices: refresh each name's weight to reflect price moves since
+  // the params snapshot, so the treemap footprint tracks the market between
+  // rebalances (manual refresh only needed on reconstitution). Bake the live
+  // weights into a working cfg so the shapers below read them as usual.
+  let workCfg = cfg;
+  if (CAP_WEIGHTED.has(index)) {
+    const refDate = PARAMS.asOfParams ? new Date(`${PARAMS.asOfParams}T23:59:59Z`) : null;
+    const wmap = capWeightMap(cfg, seriesByCode, refDate);
+    workCfg = { ...cfg, constituents: cfg.constituents.map((c) => ({ ...c, weight: wmap.get(c.code) ?? c.weight })) };
+  }
+
+  const out = shapeAllPeriods(index, workCfg, seriesByCode, indexLevel);
+  out.TIMELINE = buildTimeline(index, workCfg, seriesByCode, indexSeries);
   return out;
+}
+
+// Live cap weights (float-shares proxy). A cap weight = free-float shares × price;
+// float shares are ~constant between rebalances, so a name's weight tracks its
+// price: weight_i ∝ weight0_i × (price_now / price_ref), renormalized to sum 100.
+// price_ref = the close on/before the params snapshot date (weight0 was current
+// then). Missing series / dates fall back to the static weight. Exported for tests.
+function capWeightMap(cfg, seriesByCode, refDate) {
+  const rows = cfg.constituents.map((c) => {
+    const w0 = Math.max(c.weight ?? 0, 0);
+    const s = seriesByCode.get(c.code);
+    if (!s || !s.length || !refDate) return { code: c.code, v: w0 };
+    const pRef = closeOnOrBefore(s, refDate);
+    const pNow = lastClose(s);
+    if (!pRef || !pNow) return { code: c.code, v: w0 };
+    return { code: c.code, v: w0 * (pNow / pRef) };
+  });
+  const total = rows.reduce((a, x) => a + x.v, 0) || 1;
+  const map = new Map();
+  for (const x of rows) map.set(x.code, (x.v / total) * 100);
+  return map;
 }
 
 // ---- timeline: last N trading days (daily change) with a FIXED footprint -----
@@ -286,4 +318,4 @@ function fmtDash(d) {
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark };
+export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark, capWeightMap };
