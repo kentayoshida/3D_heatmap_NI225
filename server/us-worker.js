@@ -1,6 +1,8 @@
-// Serverless proxy (Cloudflare Worker) for the US indices: Dow Jones Industrial
-// Average (?index=dow) and Nasdaq-100 (?index=nasdaq). Fetches daily bars from
-// Yahoo Finance, computes 寄与度, and returns the exact JSON the frontend expects:
+// Serverless proxy (Cloudflare Worker) for the international indices served from
+// Yahoo Finance: Dow Jones Industrial Average (?index=dow), Nasdaq-100
+// (?index=nasdaq), BSE Sensex (?index=sensex) and Nifty 50 (?index=nifty).
+// Fetches daily bars from Yahoo Finance, computes 寄与度, and returns the exact
+// JSON the frontend expects:
 //   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
 //
 // Yahoo Finance has no auth (no key/secret needed) but doesn't allow in-browser
@@ -28,7 +30,10 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const PAYLOAD_TTL = 600; // seconds
 const SPARK_BATCH = 20;  // symbols per spark request (keeps URLs + subrequests small)
-const INDEX_SYMBOL = { dow: '^DJI', nasdaq: '^NDX' };
+const INDEX_SYMBOL = { dow: '^DJI', nasdaq: '^NDX', sensex: '^BSESN', nifty: '^NSEI' };
+// Cap-weighted indices carry a per-name index weight% and get 寄与度 =
+// level × weight% × change% (vs. the price-weighted Dow's (close−base)/divisor).
+const CAP_WEIGHTED = new Set(['nasdaq', 'sensex', 'nifty']);
 
 const _cache = new Map(); // index -> { data, exp }
 
@@ -39,7 +44,7 @@ export default {
     const url = new URL(request.url);
     const index = (url.searchParams.get('index') || 'dow').toLowerCase();
     if (!INDEX_SYMBOL[index]) {
-      return json({ error: `unknown index '${index}' (use dow or nasdaq)` }, 400, cors);
+      return json({ error: `unknown index '${index}' (use dow, nasdaq, sensex or nifty)` }, 400, cors);
     }
     try {
       const now = Date.now();
@@ -90,9 +95,41 @@ async function buildIndex(index) {
     throw new Error(`Yahoo returned too few series (${ok}/${codes.length}) — rate limited?`);
   }
 
-  const out = shapeAllPeriods(index, cfg, seriesByCode, indexLevel);
-  out.TIMELINE = buildTimeline(index, cfg, seriesByCode, indexSeries);
+  // Cap-weighted indices: refresh each name's weight to reflect price moves since
+  // the params snapshot, so the treemap footprint tracks the market between
+  // rebalances (manual refresh only needed on reconstitution). Bake the live
+  // weights into a working cfg so the shapers below read them as usual.
+  let workCfg = cfg;
+  if (CAP_WEIGHTED.has(index)) {
+    const refDate = PARAMS.asOfParams ? new Date(`${PARAMS.asOfParams}T23:59:59Z`) : null;
+    const wmap = capWeightMap(cfg, seriesByCode, refDate);
+    workCfg = { ...cfg, constituents: cfg.constituents.map((c) => ({ ...c, weight: wmap.get(c.code) ?? c.weight })) };
+  }
+
+  const out = shapeAllPeriods(index, workCfg, seriesByCode, indexLevel);
+  out.TIMELINE = buildTimeline(index, workCfg, seriesByCode, indexSeries);
   return out;
+}
+
+// Live cap weights (float-shares proxy). A cap weight = free-float shares × price;
+// float shares are ~constant between rebalances, so a name's weight tracks its
+// price: weight_i ∝ weight0_i × (price_now / price_ref), renormalized to sum 100.
+// price_ref = the close on/before the params snapshot date (weight0 was current
+// then). Missing series / dates fall back to the static weight. Exported for tests.
+function capWeightMap(cfg, seriesByCode, refDate) {
+  const rows = cfg.constituents.map((c) => {
+    const w0 = Math.max(c.weight ?? 0, 0);
+    const s = seriesByCode.get(c.code);
+    if (!s || !s.length || !refDate) return { code: c.code, v: w0 };
+    const pRef = closeOnOrBefore(s, refDate);
+    const pNow = lastClose(s);
+    if (!pRef || !pNow) return { code: c.code, v: w0 };
+    return { code: c.code, v: w0 * (pNow / pRef) };
+  });
+  const total = rows.reduce((a, x) => a + x.v, 0) || 1;
+  const map = new Map();
+  for (const x of rows) map.set(x.code, (x.v / total) * 100);
+  return map;
 }
 
 // ---- timeline: last N trading days (daily change) with a FIXED footprint -----
@@ -102,7 +139,7 @@ async function buildIndex(index) {
 // the already-fetched series (no extra requests). Exported for unit tests.
 const TIMELINE_DAYS = 5;
 function fixedSize(index, c, s) {
-  if (index === 'nasdaq') return Math.max(c.weight ?? 0, 0);
+  if (CAP_WEIGHTED.has(index)) return Math.max(c.weight ?? 0, 0); // cap weight%
   return s && s.length ? lastClose(s) : 0; // dow: share price
 }
 function longestSeries(seriesByCode) {
@@ -166,7 +203,7 @@ function shapePeriod(index, cfg, seriesByCode, { p, baseDate, latest, divisor, i
     const diff = close - base;
     const changePct = (diff / base) * 100;
     let contribution;
-    if (index === 'nasdaq') {
+    if (CAP_WEIGHTED.has(index)) {
       // point contribution to a cap-weighted index ≈ level × weight × return.
       const level = indexLevel || 100;
       contribution = level * ((c.weight ?? 0) / 100) * (changePct / 100);
@@ -281,4 +318,4 @@ function fmtDash(d) {
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark };
+export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark, capWeightMap };

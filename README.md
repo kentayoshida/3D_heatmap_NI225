@@ -3,11 +3,13 @@
 株価指数のヒートマップは finviz や nikkei225jp.com のように **2次元（平面）** の
 treemap が一般的です。本プロジェクトはそこに **高さ（第3の次元）** を加え、
 カーソルのドラッグで **360度回転** できるインタラクティブな 3D ヒートマップです。
-画面右上のスイッチャーで **3指数** を切り替えられます:
+画面右上のスイッチャーで **5指数** を切り替えられます:
 
 - **NIKKEI** … 日経平均225（株価加重・J-Quants）
 - **DOW30** … NYダウ工業株30種（株価加重・Yahoo Finance）
 - **NASDAQ 100** … NASDAQ 100指数（時価総額加重・Yahoo Finance）
+- **SENSEX** … BSE SENSEX（30銘柄・時価総額加重・Yahoo Finance）
+- **NIFTY 50** … NSE Nifty 50（50銘柄・時価総額加重・Yahoo Finance）
 
 <img src="docs/preview.png" alt="preview" width="640">
 
@@ -29,6 +31,8 @@ treemap が一般的です。本プロジェクトはそこに **高さ（第3�
 | NIKKEI 225 | 株価加重 | `換算係数(PAF) × (現在値−基準値) / 除数` |
 | DOW30 | 株価加重 | `(現在値−基準値) / 除数`（除数は `Σ最新終値 / ^DJI` から導出） |
 | NASDAQ 100 | 時価総額加重 | `指数レベル(^NDX) × 構成ウェイト% × 騰落率%` |
+| SENSEX | 時価総額加重 | `指数レベル(^BSESN) × 構成ウェイト% × 騰落率%` |
+| NIFTY 50 | 時価総額加重 | `指数レベル(^NSEI) × 構成ウェイト% × 騰落率%` |
 
 ## 操作
 
@@ -37,7 +41,7 @@ treemap が一般的です。本プロジェクトはそこに **高さ（第3�
 - **右ドラッグ**：平行移動
 - **ホバー**：銘柄名・コード・業種・騰落率・寄与度をツールチップ表示
 - **期間ボタン**（上中央）：`1D / 1W / 1M / 3M / 6M / YTD / 1Y` を切り替え（滑らかにアニメーション）
-- **指数スイッチャー**（右上）：`NIKKEI / DOW30 / NASDAQ 100` を切り替え（初回のみ遅延読込＋キャッシュ）
+- **指数スイッチャー**（右上）：`NIKKEI / DOW30 / NASDAQ 100 / SENSEX / NIFTY 50` を切り替え（初回のみ遅延読込＋キャッシュ）
 - **言語トグル**（右上）：`日本語 / EN` を切り替え。凡例・ツールチップ・操作ラベルを日英で表示。米国指数の銘柄名は英語、日経は英語社名データ（`nameEn`）が無ければ銘柄コードで代替し、業種はTSE33業種の英名に翻訳
 - **スクリーンショット共有**（左上📷 / `X` / `LINE` / リンク）：カメラマークやX/LINEをクリックすると、いま見ているアングル・ズームのまま画像化（上下に指数名・基準日・サイトURL `https://3dheatmap.markets-lab.com/` の帯を焼き込み）。共有は**画像添付が前提**：
   - **画像共有に対応した端末（スマホ等）**：`navigator.share({files})` で**画像そのものを添付**して共有シートを開き、X / LINE などのアプリを選んで投稿（画像付き）。
@@ -112,16 +116,18 @@ public/                配信物（Cloudflare Pages の出力ディレクトリ�
   data/ni225.js        NIKKEI サンプル（window.HEATMAP_SAMPLE.NIKKEI）
   data/dow30.js        DOW30 サンプル（window.HEATMAP_SAMPLE.DOW30）
   data/nasdaq100.js    NASDAQ100 サンプル（window.HEATMAP_SAMPLE.NASDAQ100）
+  data/sensex.js       SENSEX サンプル（window.HEATMAP_SAMPLE.SENSEX）
+  data/nifty50.js      NIFTY 50 サンプル（window.HEATMAP_SAMPLE.NIFTY50）
   assets/              背景画像の差し替えスロット（starfield.jpg・任意。無ければ手続き星空）
   _headers             Cloudflare Pages のキャッシュ設定
 scripts/gen_sample.mjs    NIKKEI サンプル生成スクリプト
-scripts/gen_sample_us.mjs DOW30 / NASDAQ100 サンプル生成スクリプト
+scripts/gen_sample_us.mjs DOW30 / NASDAQ100 / SENSEX / NIFTY50 サンプル生成スクリプト
 server/                データプロキシ（Cloudflare Worker）
   worker.js               NIKKEI: J-Quants V2 → 寄与度
-  us-worker.js            DOW30 / NASDAQ100: Yahoo Finance → 寄与度（?index=dow|nasdaq）
+  us-worker.js            DOW30 / NASDAQ100 / SENSEX / NIFTY50: Yahoo Finance → 寄与度（?index=dow|nasdaq|sensex|nifty）
   build-params.mjs        NIKKEI パラメータ（PAF・除数）ビルド
-  build-us-params.mjs     米国パラメータ（構成銘柄・NASDAQウェイト）ビルド
-  us-constituents.mjs     Dow30 / Nasdaq100 の構成銘柄（共有）
+  build-us-params.mjs     国際指数パラメータ（構成銘柄・時価総額ウェイト）ビルド
+  us-constituents.mjs     Dow30 / Nasdaq100 / SENSEX / NIFTY50 の構成銘柄（共有）
   wrangler.toml           NIKKEI Worker 設定
   wrangler-us.toml        米国 Worker 設定
 ```
@@ -171,7 +177,7 @@ cd server
 wrangler secret put JQUANTS_API_KEY   # 初回のみ
 wrangler deploy                       # wrangler.toml を使用
 
-# DOW30 / NASDAQ100（Yahoo Finance / キー不要）
+# DOW30 / NASDAQ100 / SENSEX / NIFTY 50（Yahoo Finance / キー不要）
 wrangler deploy --config wrangler-us.toml
 ```
 
@@ -179,14 +185,14 @@ wrangler deploy --config wrangler-us.toml
 > チェックアウトの再デプロイが過去の障害原因でした）。
 
 デプロイ先URLはフロントの `js/data-source.js` の `CONFIG.endpoints` に設定済みです
-（米国は `?index=dow` / `?index=nasdaq` を付与）。いずれかが不達でも、該当指数は
-バンドル済みサンプルに自動フォールバックします。
+（国際指数は `?index=dow` / `?index=nasdaq` / `?index=sensex` / `?index=nifty` を付与）。
+いずれかが不達でも、該当指数はバンドル済みサンプルに自動フォールバックします。
 
 ## データの差し替え（実データ連携）
 
 `public/data/*.js` は **サンプルデータ**（実在の株価ではありません）で、ライブAPIが
 不達のときのフォールバックです。各指数は `window.HEATMAP_SAMPLE[indexKey]` に同じ形で
-格納されます（`indexKey` = `NIKKEI` / `DOW30` / `NASDAQ100`）。
+格納されます（`indexKey` = `NIKKEI` / `DOW30` / `NASDAQ100` / `SENSEX` / `NIFTY50`）。
 
 ```js
 window.HEATMAP_SAMPLE['NIKKEI'] = {
@@ -245,22 +251,33 @@ export const CONFIG = { endpoint: 'https://<your-host>/api/ni225-heatmap' };
 APIが返すのは*株価*であり、寄与度は別途計算が必要です。そこで小さなサーバ
 （プロキシ）でAPIキーを保持し、株価を取得→寄与度を計算→上記JSONを返します。
 
-### 米国指数（DOW30 / NASDAQ100）— Yahoo Finance連携
+### 国際指数（DOW30 / NASDAQ100 / SENSEX / NIFTY 50）— Yahoo Finance連携
 
-米国2指数は `server/us-worker.js`（Cloudflare Worker）が **Yahoo Finance** から
-日足を取得し、寄与度を計算して同じ形のJSONを返します（`?index=dow` / `?index=nasdaq`）。
+この4指数は `server/us-worker.js`（Cloudflare Worker）が **Yahoo Finance** から
+日足を取得し、寄与度を計算して同じ形のJSONを返します
+（`?index=dow` / `?index=nasdaq` / `?index=sensex` / `?index=nifty`）。
 Yahoo は **APIキー不要** ですが、ブラウザ直叩き（CORS）とレート制限のためプロキシ経由にします。
 構成銘柄の日足は Yahoo の **spark エンドポイント**（`?symbols=A,B,C…` で複数銘柄を1回で取得）
-でまとめて取り、外部fetch回数を抑えます（DOW≈2、NASDAQ≈5リクエスト＋指数1）。これは
-Cloudflare 無料プランの **1リクエストあたり50サブリクエスト上限** に収めるためで、以前の
+でまとめて取り、外部fetch回数を抑えます（DOW≈2、NASDAQ≈5、SENSEX≈2、NIFTY≈3リクエスト＋指数1）。
+これは Cloudflare 無料プランの **1リクエストあたり50サブリクエスト上限** に収めるためで、以前の
 「1銘柄1リクエスト」方式では NASDAQ 100（≈101リクエスト）が上限を超えてサンプルへ
 フォールバックしていました。
 
-- 構成銘柄・NASDAQのウェイトは `server/us-constituents.mjs`（同梱シード）にあり、
+- Yahooのティッカー：**BSE**（SENSEX）は数値スクリップコード＋`.BO`（例 `500325.BO`＝Reliance）、
+  **NSE**（Nifty 50）はシンボル＋`.NS`（例 `RELIANCE.NS`）。指数レベルは `^BSESN` / `^NSEI`。
+- 構成銘柄・時価総額ウェイトは `server/us-constituents.mjs`（同梱シード）にあり、
   `node server/build-us-params.mjs` で `server/us-index-params.json` を生成します。
 - **NASDAQのウェイトを最新化**するには、Invesco QQQ の保有CSVを
-  `server/qqq_holdings.csv` に置いて（`Ticker` / `Name` / `Weight` / `Sector` 列）
-  再ビルドします（CSVがあれば同梱シードより優先）。
+  `server/qqq_holdings.csv` に置いて（`Ticker` / `Name` / `Weight` / `Sector` 列）再ビルドします。
+- **時価総額加重の半自動ウェイト**（NASDAQ / SENSEX / Nifty）：Worker は各銘柄のウェイトを
+  **params 基準日（`asOfParams`）からの株価変動に応じてライブ再計算**します（浮動株プロキシ：
+  ウェイト ∝ 基準ウェイト × 現在値/基準値 を100%に再正規化）。浮動株数はリバランス間ほぼ一定
+  という前提で、**日々の値動きには自動追従**します。手動更新は**構成銘柄・浮動株が変わる
+  リバランス時（SENSEX＝6/12月、Nifty＝3/9月）だけ**で十分です。
+- **SENSEX / NIFTY の基準ウェイトを更新**するには、`server/sensex_weights.csv` /
+  `server/nifty_weights.csv`（`Ticker`＝コード, `Weight`＝% の列）を置いて再ビルドします
+  （CSVがあれば同梱シードより優先。SENSEX・Nifty は時価総額加重で `^BSESN` / `^NSEI` を使用）。
+  再ビルド時に `asOfParams` が更新され、以降その日を基準に株価追従します。
 - DOWは株価加重のため、Workerが `^DJI` から除数を導出します（ウェイト不要）。
 - Yahoo は非公式APIのため、レート制限や仕様変更で不安定になる場合があります。その際は
   該当指数がサンプルへフォールバックします（恒常運用ではAPIキー型プロバイダへ差し替え可）。

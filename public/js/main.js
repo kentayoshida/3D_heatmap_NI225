@@ -45,6 +45,9 @@ function nameFor(c) {
 }
 const sectorFor = (sector) => sectorLabel(sector, currentLang);
 const titleFor = () => INDEX_META[currentIndex].title[currentLang];
+// asOf timezone label per index: Nikkei=JST, Sensex/Nifty=IST, US=ET.
+const tzFor = (s) => (currentIndex === 'NIKKEI' ? s.jst
+  : (currentIndex === 'SENSEX' || currentIndex === 'NIFTY50') ? s.ist : s.et);
 
 // Loading veil (already visible from the HTML) — start its elapsed counter now,
 // while the first index's data is fetched and the scene is built. First load plays
@@ -185,7 +188,7 @@ function shareText() {
 async function doShare(service = null) {
   try {
     const s = strings();
-    const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
+    const tz = tzFor(s);
     let scope, date;
     if (timeline.isEntered() && timelineFrames(DATA)[timeline.index]) {
       scope = s.tlDay;
@@ -231,6 +234,9 @@ async function setIndex(idx) {
   if (idx === currentIndex || !INDEX_META[idx]) return;
   timeline.exit();          // leave the animation view when switching indices
   currentIndex = idx;
+  // SENSEX / Nifty 50 target an India / English-speaking audience → show them in
+  // English by default on entry (the user can still toggle back to 日本語).
+  if ((idx === 'SENSEX' || idx === 'NIFTY50') && currentLang !== 'en') setLang('en');
   applyChrome();
   let res = LOADED.get(idx);
   if (!res) {
@@ -290,7 +296,7 @@ function updateAsOf() {
   // In timeline mode reflect the current frame's date instead of the period's.
   const frame = timeline.isEntered() ? timelineFrames(DATA)[timeline.index] : null;
   const date = String((frame ? frame.asOf : DATA[currentPeriod]?.asOf) || '').slice(0, 10);
-  const tz = currentIndex === 'NIKKEI' ? s.jst : s.et;
+  const tz = tzFor(s);
   if (currentLang === 'en') {
     el.textContent = `${s.asOf}: ${date || '—'} (${tz})${live ? '' : ` · ${s.sample}`}`;
   } else {

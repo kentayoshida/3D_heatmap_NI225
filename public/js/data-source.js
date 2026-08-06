@@ -9,7 +9,7 @@
 // server/us-worker.js (US). If a proxy is unreachable we fall back to the bundled
 // sample in window.HEATMAP_SAMPLE[index].
 
-export const INDICES = ['NIKKEI', 'DOW30', 'NASDAQ100'];
+export const INDICES = ['NIKKEI', 'DOW30', 'NASDAQ100', 'SENSEX', 'NIFTY50'];
 
 // Per-index display metadata: switcher label, legend/page title per language,
 // and whether the constituent `name` is already English (US) or Japanese (Nikkei).
@@ -19,6 +19,8 @@ export const INDEX_META = {
   NIKKEI:    { label: 'NIKKEI',     namesEnglish: false, title: { ja: '日経平均225 3D ヒートマップ',    en: 'Nikkei 225 · 3D Heatmap' } },
   DOW30:     { label: 'DOW30',      namesEnglish: true,  title: { ja: 'NYダウ工業株30種 3D ヒートマップ', en: 'Dow Jones 30 · 3D Heatmap' } },
   NASDAQ100: { label: 'NASDAQ 100', namesEnglish: true,  title: { ja: 'NASDAQ 100 3D ヒートマップ',       en: 'Nasdaq 100 · 3D Heatmap' } },
+  SENSEX:    { label: 'SENSEX',     namesEnglish: true,  title: { ja: 'SENSEX（BSE） 3D ヒートマップ',      en: 'BSE Sensex · 3D Heatmap' } },
+  NIFTY50:   { label: 'NIFTY 50',   namesEnglish: true,  title: { ja: 'Nifty 50（NSE） 3D ヒートマップ',     en: 'Nifty 50 · 3D Heatmap' } },
 };
 
 export const CONFIG = {
@@ -28,6 +30,8 @@ export const CONFIG = {
     NIKKEI:    'https://ni225-heatmap-proxy.kenta0117.workers.dev',
     DOW30:     'https://us-heatmap-proxy.kenta0117.workers.dev?index=dow',
     NASDAQ100: 'https://us-heatmap-proxy.kenta0117.workers.dev?index=nasdaq',
+    SENSEX:    'https://us-heatmap-proxy.kenta0117.workers.dev?index=sensex',
+    NIFTY50:   'https://us-heatmap-proxy.kenta0117.workers.dev?index=nifty',
   },
 };
 

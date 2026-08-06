@@ -55,4 +55,6 @@ jobs:
           check NIKKEI    "https://ni225-heatmap-proxy.kenta0117.workers.dev"            || fail=1
           check DOW30     "https://us-heatmap-proxy.kenta0117.workers.dev/?index=dow"    || fail=1
           check NASDAQ100 "https://us-heatmap-proxy.kenta0117.workers.dev/?index=nasdaq" || fail=1
+          check SENSEX    "https://us-heatmap-proxy.kenta0117.workers.dev/?index=sensex" || fail=1
+          check NIFTY50   "https://us-heatmap-proxy.kenta0117.workers.dev/?index=nifty"  || fail=1
           exit $fail

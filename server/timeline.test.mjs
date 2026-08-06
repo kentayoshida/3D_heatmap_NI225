@@ -58,6 +58,57 @@ test('us buildTimeline (dow): footprint = latest share price, constant across fr
   assert.equal(frames[0].constituents[0].changePct, 1);
 });
 
+test('us cap-weighted (sensex/nifty): weight footprint + level×weight%×change% 寄与度', () => {
+  const cfg = { constituents: [{ code: '500325.BO', name: 'Reliance', sector: 'Energy', weight: 9.6 }] };
+  const dates = [0, 1, 2, 3, 4, 5].map((i) => new Date(Date.UTC(2026, 6, 20 + i)));
+  const closes = [1000, 1010, 1000, 1000, 1020, 1050]; // latest 1050, 1D base 1020 → +2.94%
+  const seriesByCode = new Map([['500325.BO', dates.map((t, i) => ({ t, c: closes[i] }))]]);
+  const indexSeries = dates.map((t, i) => ({ t, c: 80000 + i })); // ^BSESN level ≈ 80005
+
+  // timeline footprint == cap weight (like nasdaq), constant across frames
+  const { frames } = US.buildTimeline('sensex', cfg, seriesByCode, indexSeries);
+  assert.equal(frames.length, 5);
+  for (const f of frames) assert.equal(f.constituents[0].contribution, 9.6);
+
+  // shapePeriod (1D): contribution = level × weight% × change%
+  const level = 80005;
+  const period = US.shapePeriod('sensex', cfg, seriesByCode, {
+    p: '1D', baseDate: dates[4], latest: dates[5], divisor: 1, indexLevel: level,
+  });
+  const c = period.constituents[0];
+  const expChange = ((1050 - 1020) / 1020) * 100;
+  assert.ok(Math.abs(c.changePct - Math.round(expChange * 100) / 100) < 1e-9);
+  const expContrib = level * (9.6 / 100) * (expChange / 100);
+  assert.ok(Math.abs(c.contribution - Math.round(expContrib * 100) / 100) < 1e-9);
+});
+
+test('us capWeightMap: weights track price move since ref date, renormalized to 100', () => {
+  const cfg = { constituents: [
+    { code: 'A', name: 'A', sector: 's', weight: 10 },
+    { code: 'B', name: 'B', sector: 's', weight: 4 },
+  ] };
+  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
+  const seriesByCode = new Map([
+    ['A', [d(0), d(1), d(2), d(3)].map((t, i) => ({ t, c: [90, 100, 150, 200][i] }))], // ref@d1=100, now=200 → ×2
+    ['B', [d(0), d(1), d(2), d(3)].map((t, i) => ({ t, c: [50, 50, 50, 50][i] }))],     // unchanged → ×1
+  ]);
+  const map = US.capWeightMap(cfg, seriesByCode, d(1));
+  // raw scaled: A=20, B=4 → total 24 → A=83.33.., B=16.66..
+  assert.ok(Math.abs(map.get('A') - (20 / 24) * 100) < 1e-9);
+  assert.ok(Math.abs(map.get('B') - (4 / 24) * 100) < 1e-9);
+  assert.ok(Math.abs((map.get('A') + map.get('B')) - 100) < 1e-9); // sums to 100
+});
+
+test('us capWeightMap: no ref date → static weights, just renormalized', () => {
+  const cfg = { constituents: [
+    { code: 'A', name: 'A', sector: 's', weight: 30 },
+    { code: 'B', name: 'B', sector: 's', weight: 10 },
+  ] };
+  const map = US.capWeightMap(cfg, new Map(), null);
+  assert.ok(Math.abs(map.get('A') - 75) < 1e-9); // 30/40
+  assert.ok(Math.abs(map.get('B') - 25) < 1e-9); // 10/40
+});
+
 test('us buildTimeline: too-short series → no frames', () => {
   const cfg = { constituents: [{ code: 'X', name: 'x', sector: 's', weight: 1 }] };
   const one = new Map([['X', [{ t: new Date(), c: 5 }]]]);
