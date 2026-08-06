@@ -13,16 +13,23 @@
 
     <!-- Loading veil: visible immediately (before the module runs); hidden once the
          first heatmap frame is painted. JS fills the elapsed counter + localized text.
-         On first load a full-screen hyperspace clip plays behind the caption (if the
-         bundled MP4 is present): entry → cruising loop while data loads → on arrival
-         the clip's exit-to-normal-space segment plays, then a short cross-fade reveals
-         the scene. Missing/failed video falls back to the spinner. -->
+         On first load a full-screen hyperspace sequence plays behind the caption: the
+         entry clip plays once, the cruise clip loops (natively) while data loads, then
+         on arrival the exit clip plays and a short cross-fade reveals the scene.
+         Three separate files avoid any in-clip seeking. Missing/undecodable clips fall
+         back to the spinner. -->
     <div id="loading">
-      <!-- Hyperspace clip. Playback is segment-driven by createLoading (entry 0-4s →
-           cruise 4-10s loop → exit 11s+ on arrival), so no native `loop`. Hidden
-           unless createLoading confirms it can play. -->
-      <video id="ld-video" muted playsinline preload="auto" autoplay aria-hidden="true">
-        <source src="./assets/hyperspace.mp4" type="video/mp4" />
+      <!-- Hyperspace as three stacked clips (only the active one is visible). The
+           cruise clip loops natively; entry/exit play once. createLoading sequences
+           them: entry → cruise (loop) → exit → reveal. No seeking. -->
+      <video id="ld-entry" class="ld-clip" muted playsinline preload="auto" aria-hidden="true">
+        <source src="./assets/hyperspace-entry.mp4" type="video/mp4" />
+      </video>
+      <video id="ld-cruise" class="ld-clip" muted playsinline preload="auto" loop aria-hidden="true">
+        <source src="./assets/hyperspace-cruise.mp4" type="video/mp4" />
+      </video>
+      <video id="ld-exit" class="ld-clip" muted playsinline preload="auto" aria-hidden="true">
+        <source src="./assets/hyperspace-exit.mp4" type="video/mp4" />
       </video>
       <div class="ld-box">
         <div class="ld-spinner" aria-hidden="true"></div>

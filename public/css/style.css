@@ -198,17 +198,20 @@ html, body {
 }
 #loading.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
 
-/* Hyperspace clip: full-screen behind the caption. Hidden until createLoading
-   confirms it can play (js adds #loading.has-video); on failure the solid veil +
-   spinner remain. */
-#ld-video {
+/* Hyperspace clips: three stacked full-screen videos behind the caption; only the
+   active one is shown (createLoading toggles .active). Hidden until it confirms a
+   clip can play (js adds #loading.has-video); on failure the solid veil + spinner
+   remain. A short opacity fade covers any decode gap between phases. */
+.ld-clip {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  display: none;
+  opacity: 0;
   z-index: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
 }
-#loading.has-video #ld-video { display: block; }
+#loading.has-video .ld-clip.active { opacity: 1; }
 #loading.has-video .ld-spinner { display: none; }      /* the clip is the progress cue */
 /* Subtle scrim so the caption stays legible over bright star streaks. */
 #loading.has-video .ld-box {

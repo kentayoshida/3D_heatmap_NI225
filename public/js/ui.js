@@ -222,26 +222,25 @@ export function createToast(parent) {
 // #loading element already present in the HTML (visible before JS runs); `strings`
 // is a getter. Returns { show, hide } — both idempotent.
 //
-// Hyperspace mode (show({ hyperspace: true }), first load only): a bundled MP4
-// (#ld-video) plays full-screen behind the caption while data is fetched. Playback
-// is driven by segment (playhead), not the native `loop`, to match a clip that has
-// three phases: entry → cruise (looped while waiting) → exit (dropping out to normal
-// space). On hide() the entry is allowed to finish (cinematic), then the exit segment
-// plays and a short cross-fade reveals the scene. If the video is absent or can't
-// play, it falls back to the plain spinner veil.
-//
-// Segment boundaries (seconds) — the supplied clip is entry 0-4 / cruise 4-10 /
-// exit 11-14. Tunable to the actual asset.
-const SEG = { ENTRY_END: 5.0, CRUISE_START: 5.1, CRUISE_END: 10.0, EXIT_START: 10.1, EXIT_END: 13.0 };
-
+// Hyperspace mode (show({ hyperspace: true }), first load only): three stacked clips
+// (#ld-entry / #ld-cruise / #ld-exit) play behind the caption while data is fetched.
+// The sequence is entry (once) → cruise (native `loop`, endless while waiting) → exit
+// (on arrival) → cross-fade to the scene. Using three separate files means we never
+// seek inside a clip — each just plays or loops from its own start — which is robust
+// even for clips that don't seek reliably (e.g. fragmented MP4s). If the clips are
+// missing or can't decode, it falls back to the plain spinner veil.
 export function createLoading(el, strings) {
   if (!el) return { show() {}, hide() {} };
   const text = el.querySelector('.ld-text');
   const elapsed = el.querySelector('.ld-elapsed');
   const hint = el.querySelector('.ld-hint');
-  const video = el.querySelector('#ld-video');
+  const vEntry = el.querySelector('#ld-entry');
+  const vCruise = el.querySelector('#ld-cruise');
+  const vExit = el.querySelector('#ld-exit');
+  const clips = [vEntry, vCruise, vExit].filter(Boolean);
   let timer = null, start = 0, hyper = false;
-  let arriving = false, exiting = false, revealed = false, cruised = false, raf = 0;
+  let phase = 'idle';                                   // idle | entry | cruise | exit
+  let arriving = false, revealed = false;
 
   const paint = () => {
     const s = strings();
@@ -250,81 +249,49 @@ export function createLoading(el, strings) {
     if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - start) / 1000)}${s.sec}`;
   };
 
-  // Show the clip only once it can actually display a frame; until then (and if it
-  // never can — missing file / undecodable / autoplay blocked) the spinner veil stays.
-  const enableVideo = () => { if (hyper && video && !video.error) el.classList.add('has-video'); };
-  const disableVideo = () => { el.classList.remove('has-video'); if (arriving) reveal(); };
+  const play = (v) => { if (!v) return; try { v.currentTime = 0; } catch (_) {} const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+  const setActive = (v) => clips.forEach((c) => {
+    if (c === v) c.classList.add('active');
+    else { c.classList.remove('active'); try { c.pause(); } catch (_) {} }
+  });
+
+  // Reveal the clip only once the entry can display a frame; until then (and if it
+  // never can — missing file / undecodable / autoplay blocked) the spinner stays.
+  const enableVideo = () => { if (hyper && vEntry && !vEntry.error) el.classList.add('has-video'); };
 
   function reveal() {                                   // cross-fade veil → scene
     if (revealed) return;
     revealed = true;
-    cancelAnimationFrame(raf); raf = 0;
     clearInterval(timer); timer = null;
+    clips.forEach((c) => { try { c.pause(); } catch (_) {} });
     el.classList.add('hidden');
   }
 
-  function startExit() {
-    exiting = true;
-    try { video.currentTime = SEG.EXIT_START; } catch (_) {}
-    const p = video.play(); if (p && p.catch) p.catch(() => {});
-  }
+  function goEntry()  { phase = 'entry';  setActive(vEntry);  play(vEntry); }
+  function goCruise() { if (arriving) { goExit(); return; }   // data ready already → skip to exit
+                        phase = 'cruise'; setActive(vCruise); play(vCruise); } // native loop
+  function goExit()   { phase = 'exit';   setActive(vExit);   play(vExit); }
 
-  // Loop back into the cruise window. `cruised` marks that the entry has already
-  // played once, so we never replay it. Seeks are exact (the clip is all-keyframe).
-  function loopCruise() {
-    cruised = true;
-    try { video.currentTime = SEG.CRUISE_START; } catch (_) {}
-    if (video.paused) { const p = video.play(); if (p && p.catch) p.catch(() => {}); }
+  if (vEntry) {
+    vEntry.addEventListener('canplay', enableVideo);
+    vEntry.addEventListener('loadeddata', enableVideo);
+    vEntry.addEventListener('ended', () => { if (!revealed && phase === 'entry') goCruise(); });
   }
-
-  // rAF driver: play the entry once, then loop strictly within [CRUISE_START,
-  // CRUISE_END] while waiting; on arrival finish the entry then play the exit and
-  // reveal at its end.
-  function tick() {
-    raf = 0;
-    if (revealed) return;
-    if (el.classList.contains('has-video') && video && !video.error) {
-      const ct = video.currentTime;
-      if (exiting) {
-        if (video.ended || ct >= SEG.EXIT_END) { reveal(); return; }
-      } else if (arriving) {
-        if (ct >= SEG.ENTRY_END) startExit();           // entry done → exit (cinematic full)
-      } else if (!cruised) {
-        if (ct >= SEG.CRUISE_END) loopCruise();          // entry + first cruise done → start looping
-      } else if (ct >= SEG.CRUISE_END || ct < SEG.CRUISE_START - 0.15) {
-        loopCruise();                                    // clamp the playhead inside the cruise window
-      }                                                  // (never lets it drift back into the entry)
-    }
-    raf = requestAnimationFrame(tick);
-  }
-  function startTick() { if (!raf) raf = requestAnimationFrame(tick); }
-
-  if (video) {
-    video.addEventListener('canplay', enableVideo);
-    video.addEventListener('loadeddata', enableVideo);
-    video.addEventListener('error', disableVideo);
-    video.addEventListener('ended', () => {
-      if (revealed) return;
-      if (exiting || arriving) { reveal(); return; }     // arrival: exit (or clip) finished → scene
-      loopCruise();                                       // ran to the end while still waiting → keep cruising
-    });
-  }
+  // Exit ends → arrived. (Cruise loops natively, so it has no 'ended'.)
+  if (vExit) vExit.addEventListener('ended', () => { if (!revealed) reveal(); });
 
   return {
     show({ hyperspace = false } = {}) {
       start = Date.now();
       hyper = hyperspace;
-      arriving = exiting = revealed = false;
+      arriving = revealed = false;
+      phase = 'idle';
       el.classList.remove('hidden');
       el.classList.remove('has-video');
-      if (hyperspace && video) {
-        try { video.currentTime = 0; } catch (_) {}     // start from the entry
-        if (video.readyState >= 2) enableVideo();        // already buffered a frame
-        const p = video.play();                          // kick playback (also fires canplay)
-        if (p && p.catch) p.catch(() => {});             // blocked → spinner stays
-        startTick();
-      } else if (video) {
-        video.pause();
+      clips.forEach((c) => { c.classList.remove('active'); try { c.pause(); c.currentTime = 0; } catch (_) {} });
+      if (hyperspace && vEntry) {
+        if (vEntry.readyState >= 2) enableVideo();        // already buffered a frame
+        goEntry();                                         // play entry, then cruise loops on its 'ended'
       }
       paint();
       clearInterval(timer);
@@ -333,22 +300,23 @@ export function createLoading(el, strings) {
     hide() {
       if (revealed || arriving) return;                  // idempotent (rAF + timeout callers)
       if (!hyper) { reveal(); return; }                  // index switch etc. → plain fade
-      if (!video || video.error || !el.classList.contains('has-video')) {
-        // No usable clip yet. Give a decodable clip a brief chance to become ready
-        // (it may still be buffering), else fall back to a plain fade.
-        if (video && !video.error) {
-          const onReady = () => { if (!revealed) { arriving = true; startTick(); } };
-          video.addEventListener('canplay', onReady, { once: true });
+      if (!vEntry || vEntry.error || !el.classList.contains('has-video')) {
+        // No usable clip yet. Give the entry a brief chance to become ready (it may
+        // still be buffering), else fall back to a plain fade.
+        if (vEntry && !vEntry.error) {
+          const onReady = () => { if (!revealed) { arriving = true; if (phase === 'idle') goEntry(); } };
+          vEntry.addEventListener('canplay', onReady, { once: true });
           setTimeout(() => {
-            video.removeEventListener('canplay', onReady);
+            vEntry.removeEventListener('canplay', onReady);
             if (!arriving && !revealed) reveal();
           }, 4000);
           return;
         }
         reveal(); return;
       }
-      arriving = true;                                   // clip is playing → run entry→exit→reveal
-      startTick();
+      arriving = true;                                   // run through to the exit, then reveal
+      if (phase === 'cruise') goExit();                  // already cruising → play the exit now
+      // if phase === 'entry', let it finish (cinematic); its 'ended' → goCruise → (arriving) → goExit
     },
   };
 }
