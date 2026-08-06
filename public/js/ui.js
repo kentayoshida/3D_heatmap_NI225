@@ -57,15 +57,19 @@ export function createTooltip(parent, ctx) {
       const s = ctx.strings();
       const up = data.changePct >= 0;
       const pct = (up ? '+' : '') + data.changePct.toFixed(2) + '%';
-      const contrib = (data.contribution >= 0 ? '+' : '') + data.contribution.toFixed(2);
       const sw = changeColorCss(data.changePct, cap);
+      const hasWeight = typeof data.weight === 'number';
+      const hasContrib = typeof data.contribution === 'number';
+      const weightTxt = hasWeight ? data.weight.toFixed(2) + '%' : '';
+      const contrib = hasContrib ? (data.contribution >= 0 ? '+' : '') + data.contribution.toFixed(2) : '';
       el.innerHTML =
         `<div class="tt-head"><span class="tt-swatch" style="background:${sw}"></span>` +
         `<span class="tt-name">${escapeHtml(ctx.nameFor(data))}</span>` +
         `<span class="tt-code">${escapeHtml(data.code)}</span></div>` +
         `<div class="tt-sector">${escapeHtml(ctx.sectorFor(data.sector))}</div>` +
         `<div class="tt-row"><span>${escapeHtml(s.ttChange)}</span><b class="${up ? 'up' : 'down'}">${pct}</b></div>` +
-        `<div class="tt-row"><span>${escapeHtml(s.ttContribution)}</span><b class="${data.contribution >= 0 ? 'up' : 'down'}">${contrib}</b></div>`;
+        (hasWeight ? `<div class="tt-row"><span>${escapeHtml(s.ttWeight)}</span><b>${weightTxt}</b></div>` : '') +
+        (hasContrib ? `<div class="tt-row"><span>${escapeHtml(s.ttContribution)}</span><b class="${data.contribution >= 0 ? 'up' : 'down'}">${contrib}</b></div>` : '');
       el.style.display = 'block';
       this.move(x, y);
     },
@@ -124,6 +128,7 @@ export function renderLegend(el, { strings, title, inverted }) {
     `<div class="lg-title">${escapeHtml(title)}</div>` +
     `<div class="lg-enc" id="lg-dir">${strings.legHeight.replace('{dir}', escapeHtml(dir))}</div>` +
     `<div class="lg-enc">${strings.legArea}</div>` +
+    `<div class="lg-enc">${strings.legVolume}</div>` +
     `<div class="lg-scale"><span class="down">${escapeHtml(strings.down)}</span>` +
     `<span class="lg-grad"></span><span class="up">${escapeHtml(strings.up)}</span></div>` +
     `<div class="lg-hint">${escapeHtml(strings.hint)}</div>`;

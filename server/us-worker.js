@@ -1,9 +1,11 @@
 // Serverless proxy (Cloudflare Worker) for the international indices served from
 // Yahoo Finance: Dow Jones Industrial Average (?index=dow), Nasdaq-100
 // (?index=nasdaq), BSE Sensex (?index=sensex) and Nifty 50 (?index=nifty).
-// Fetches daily bars from Yahoo Finance, computes 寄与度, and returns the exact
-// JSON the frontend expects:
-//   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
+// Fetches daily bars from Yahoo Finance and returns the exact JSON the frontend
+// expects:
+//   { "1D": { asOf, constituents:[{code,name,sector,changePct,weight,contribution}] }, ... }
+// Encoding: area ∝ weight (index weight%), height ∝ changePct, so the bar's
+// volume (area × height) ≈ contribution (the name's index-point impact).
 //
 // Yahoo Finance has no auth (no key/secret needed) but doesn't allow in-browser
 // CORS calls and rate-limits, so we proxy it. Constituent daily series come from
@@ -14,11 +16,12 @@
 // the Nasdaq 100 and tripped that cap, so Nasdaq fell back to the sample.)
 // Cached for 10 minutes.
 //
-// 寄与度 (area ∝ |contribution|):
-//   Dow    (price-weighted): contribution = (close − base) / divisor
-//          divisor derived live from Σ(latest close) / ^DJI level (self-correcting).
-//   Nasdaq (cap-weighted):   contribution = NDX level × weight% × changePct%
-//          i.e. the name's point contribution to the index move.
+// weight% (area):
+//   Dow    (price-weighted): weight = close / Σ(latest close) × 100 (price share).
+//   Nasdaq (cap-weighted):   weight = the index weight% (live float-shares proxy).
+// contribution (≈ volume, tooltip):
+//   Dow:    (close − base) / divisor; divisor from Σ(latest close) / ^DJI level.
+//   Nasdaq: NDX level × weight% × changePct% (the name's index-point impact).
 //
 // Var (wrangler [vars]): ALLOW_ORIGIN (comma-separated allowlist or '*').
 
@@ -133,10 +136,10 @@ function capWeightMap(cfg, seriesByCode, refDate) {
 }
 
 // ---- timeline: last N trading days (daily change) with a FIXED footprint -----
-// The area (contribution) is pinned to a stable per-name weight (share price for
-// the price-weighted Dow, cap weight% for the Nasdaq) so the treemap layout is the
-// same on every frame — only height/color (that day's change%) animate. Pure over
-// the already-fetched series (no extra requests). Exported for unit tests.
+// The area (weight%) is pinned to a stable per-name footprint (share price for the
+// price-weighted Dow, cap weight% for the Nasdaq) so the treemap layout is the same
+// on every frame — only height/color (that day's change%) animate. Pure over the
+// already-fetched series (no extra requests). Exported for unit tests.
 const TIMELINE_DAYS = 5;
 function fixedSize(index, c, s) {
   if (CAP_WEIGHTED.has(index)) return Math.max(c.weight ?? 0, 0); // cap weight%
@@ -150,17 +153,22 @@ function longestSeries(seriesByCode) {
 function buildTimeline(index, cfg, seriesByCode, indexSeries, n = TIMELINE_DAYS) {
   const ref = indexSeries && indexSeries.length >= 2 ? indexSeries : longestSeries(seriesByCode);
   if (!ref || ref.length < 2) return { frames: [] };
+  // fixed footprint per name → index weight% (area). Cap-weighted names already
+  // carry a weight%; the price-weighted Dow's share-price footprint is normalized.
+  const isCap = CAP_WEIGHTED.has(index);
+  const sizes = cfg.constituents.map((c) => fixedSize(index, c, seriesByCode.get(c.code)));
+  const total = isCap ? 1 : (sizes.reduce((a, x) => a + x, 0) || 1);
   const dates = ref.slice(-(n + 1)).map((p) => p.t); // ascending, up to n+1 dates
   const frames = [];
   for (let i = 1; i < dates.length; i++) {
     const d = dates[i], prev = dates[i - 1];
-    const constituents = cfg.constituents.map((c) => {
+    const constituents = cfg.constituents.map((c, ci) => {
       const s = seriesByCode.get(c.code);
-      const size = fixedSize(index, c, s);
+      const weight = round2(isCap ? sizes[ci] : (sizes[ci] / total) * 100);
       const close = s && s.length ? closeOnOrBefore(s, d) : null;
       const base = s && s.length ? closeOnOrBefore(s, prev) : null;
       const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
-      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), contribution: round2(size) };
+      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), weight };
     });
     frames.push({ asOf: fmtDash(d), constituents });
   }
@@ -184,18 +192,42 @@ function shapeAllPeriods(index, cfg, seriesByCode, indexLevel) {
     if (sum > 0) divisor = sum / indexLevel;
   }
 
+  // Per-name index weight% for the treemap footprint (area). Period-independent —
+  // one snapshot shared by every period so the layout holds still across 1D…1Y.
+  const weightByCode = weightSnapshot(index, cfg, seriesByCode);
+
   const baseDates = periodBaseDates(latest);
   const out = {};
   for (const p of PERIODS) {
-    out[p] = shapePeriod(index, cfg, seriesByCode, { p, baseDate: baseDates[p], latest, divisor, indexLevel });
+    out[p] = shapePeriod(index, cfg, seriesByCode, { p, baseDate: baseDates[p], latest, divisor, indexLevel, weightByCode });
   }
   return out;
 }
 
-function shapePeriod(index, cfg, seriesByCode, { p, baseDate, latest, divisor, indexLevel }) {
-  const constituents = cfg.constituents.map((c) => {
+// Per-name index weight% (area source): the index weight for cap-weighted indices;
+// the price share (close / Σ close) for the price-weighted Dow. Exported for tests.
+function weightSnapshot(index, cfg, seriesByCode) {
+  const map = new Map();
+  if (CAP_WEIGHTED.has(index)) {
+    for (const c of cfg.constituents) map.set(c.code, Math.max(c.weight ?? 0, 0));
+    return map;
+  }
+  let sum = 0;
+  for (const c of cfg.constituents) { const s = seriesByCode.get(c.code); if (s?.length) sum += lastClose(s); }
+  for (const c of cfg.constituents) {
     const s = seriesByCode.get(c.code);
-    const zero = { code: c.code, name: c.name, sector: c.sector, changePct: 0, contribution: 0 };
+    map.set(c.code, (s?.length && sum > 0) ? (lastClose(s) / sum) * 100 : 0);
+  }
+  return map;
+}
+
+// Each name carries: changePct (height/color), weight% (area) and contribution
+// (the signed index-point impact ≈ area × height, shown in the tooltip).
+function shapePeriod(index, cfg, seriesByCode, { p, baseDate, latest, divisor, indexLevel, weightByCode }) {
+  const constituents = cfg.constituents.map((c) => {
+    const w = round2(weightByCode?.get(c.code) ?? c.weight ?? 0);
+    const s = seriesByCode.get(c.code);
+    const zero = { code: c.code, name: c.name, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
     if (!s || !s.length) return zero;
     const close = lastClose(s);
     const base = p === '1D' ? prevClose(s) : closeOnOrBefore(s, baseDate);
@@ -212,7 +244,7 @@ function shapePeriod(index, cfg, seriesByCode, { p, baseDate, latest, divisor, i
     }
     return {
       code: c.code, name: c.name, sector: c.sector,
-      changePct: round2(changePct), contribution: round2(contribution),
+      changePct: round2(changePct), weight: w, contribution: round2(contribution),
     };
   });
   return { asOf: fmtDash(latest), constituents };
@@ -318,4 +350,4 @@ function fmtDash(d) {
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark, capWeightMap };
+export const _internals = { shapeAllPeriods, shapePeriod, periodBaseDates, closeOnOrBefore, prevClose, lastClose, corsHeaders, buildTimeline, fixedSize, parseSpark, capWeightMap, weightSnapshot };

@@ -1,6 +1,7 @@
 // Data source layer for the multi-index heatmap. Each index (NIKKEI / DOW30 /
-// NASDAQ100) is served by a small backend proxy that returns the SAME shape:
-//   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
+// NASDAQ100 / SENSEX / NIFTY50) is served by a small backend proxy returning the
+// SAME shape (area ∝ weight, height ∝ changePct, volume ≈ contribution):
+//   { "1D": { asOf, constituents:[{code,name,sector,changePct,weight,contribution}] }, ... }
 //
 // Why a backend? The upstream price APIs (JPX / J-Quants for Nikkei, Yahoo Finance
 // for the US indices) don't allow direct in-browser (CORS) calls, and they return

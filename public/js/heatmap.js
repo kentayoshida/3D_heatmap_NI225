@@ -1,7 +1,8 @@
 // Builds and maintains the 3D field of bars from constituent data.
-// Footprint (w×d) comes from the treemap (area ∝ |contribution|); height and
-// color come from change%. Positive bars rise above the y=0 plane, negative bars
-// sink below it. Period changes animate each bar's size / position / color.
+// Footprint (w×d) comes from the treemap (area ∝ index weight%); height is (nearly)
+// linear in change% and color comes from change%, so a bar's volume (area × height)
+// reads as its 寄与度 (weight × change). Positive bars rise above the y=0 plane,
+// negative bars sink below it. Period changes animate size / position / color.
 import * as THREE from 'three';
 import { layoutTreemap } from './treemap.js';
 import { changeColor } from './color.js';
@@ -9,9 +10,12 @@ import { changeColor } from './color.js';
 const FONT = '"Noto Sans CJK JP","Noto Sans JP","Hiragino Sans","Yu Gothic",Meiryo,sans-serif';
 
 const BOX_GAP = 0.14;   // shrink each bar slightly so neighbors read as separate
-const H_MIN = 0.35;     // floor height so ~0% bars are still a visible slab
-const H_SPAN = 22;      // world height of a fully-saturated bar
-const H_OVER = 1.35;    // let outliers beyond the cap overshoot a little
+// Height is (near-)linear in change% so volume (area × height) ≈ 寄与度: a tiny
+// floor keeps ~0% bars pickable/visible, and a generous overshoot clamps only true
+// outliers (so one earnings pop doesn't crush the rest of the scale).
+const H_MIN = 0.15;     // floor height so ~0% bars are still a pickable slab
+const H_SPAN = 22;      // world height at the saturation cap
+const H_OVER = 2.4;     // let outliers beyond the cap overshoot (loose clamp)
 const TWEEN_DUR = 0.7;  // seconds
 const FILL_MIN = 0.07;          // fill opacity at the top of the glass range
 const XRAY_AT = 0.85;           // slider fraction at/above which X-ray (outline) mode kicks in
