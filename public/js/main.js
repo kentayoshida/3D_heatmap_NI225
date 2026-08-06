@@ -234,6 +234,9 @@ async function setIndex(idx) {
   if (idx === currentIndex || !INDEX_META[idx]) return;
   timeline.exit();          // leave the animation view when switching indices
   currentIndex = idx;
+  // SENSEX / Nifty 50 target an India / English-speaking audience → show them in
+  // English by default on entry (the user can still toggle back to 日本語).
+  if ((idx === 'SENSEX' || idx === 'NIFTY50') && currentLang !== 'en') setLang('en');
   applyChrome();
   let res = LOADED.get(idx);
   if (!res) {
