@@ -16,9 +16,26 @@ const W = 100, D = 70;         // base-plane extent (X, Z)
 const REFRESH_MS = 15 * 60 * 1000; // poll for newer end-of-day data every 15 min
 
 // One index + one language shown at a time; other indices load lazily & cache.
-let currentIndex = 'NIKKEI';
+// Landing on DOW30: its US worker answers in ~seconds (spark batch), whereas the
+// Nikkei worker cold-starts a ~20–30s J-Quants crawl. We paint DOW30 first, then
+// warm Nikkei in the background so switching to it is instant.
+let currentIndex = 'DOW30';
 let currentLang = 'ja';
-const LOADED = new Map(); // index -> { data, live }
+const LOADED = new Map();  // index -> { data, live }  (resolved)
+const PENDING = new Map(); // index -> Promise<{data,live}> (in flight)
+
+// Load an index once, sharing any in-flight request so a background prefetch and a
+// user-triggered switch never fetch the same index twice. Resolves from LOADED if
+// already loaded. On failure the pending entry is cleared so a later retry can run.
+function ensureLoaded(idx) {
+  if (LOADED.has(idx)) return Promise.resolve(LOADED.get(idx));
+  if (PENDING.has(idx)) return PENDING.get(idx);
+  const p = loadData(idx)
+    .then((res) => { LOADED.set(idx, res); PENDING.delete(idx); return res; })
+    .catch((err) => { PENDING.delete(idx); throw err; });
+  PENDING.set(idx, p);
+  return p;
+}
 
 // language-aware display resolvers (used by the heatmap labels + tooltip)
 const strings = () => UI[currentLang];
@@ -37,11 +54,11 @@ const loading = createLoading(document.getElementById('loading'), strings);
 loading.show({ hyperspace: true });
 
 // Bundled sample by default; point data-source.js CONFIG.endpoints at backends to
-// go live. Top-level await keeps the rest of setup unchanged.
-{
-  const res = await loadData(currentIndex);
-  LOADED.set(currentIndex, res);
-}
+// go live. Kick off the (slow, cold) Nikkei fetch first so it warms in parallel,
+// then await the fast landing index (DOW30). Both flow through ensureLoaded, so a
+// later switch to Nikkei reuses this in-flight request instead of refetching.
+ensureLoaded('NIKKEI').catch(() => {}); // background warm; failures fall back later
+await ensureLoaded(currentIndex);
 let DATA = LOADED.get(currentIndex).data;
 let live = LOADED.get(currentIndex).live;
 
@@ -217,10 +234,9 @@ async function setIndex(idx) {
   applyChrome();
   let res = LOADED.get(idx);
   if (!res) {
-    loading.show(); // first visit to this index: show the veil during the fetch
+    loading.show(); // not yet loaded: show the veil while the (shared) fetch runs
     try {
-      res = await loadData(idx);
-      LOADED.set(idx, res);
+      res = await ensureLoaded(idx); // reuses the background prefetch if in flight
     } catch (err) {
       console.warn(`[heatmap] failed to load ${idx}:`, err.message);
       loading.hide();
@@ -361,4 +377,4 @@ requestAnimationFrame(() => loading.hide());
 setTimeout(() => loading.hide(), 250);
 
 // expose for debugging / e2e checks
-window.__heatmap = { scene, camera, controls, heatmap, timeline, setPeriod, setIndex, setLang, doShare, captureBrandedPng: (o) => captureBrandedPng({ renderer, scene, camera, ...o }), PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; } };
+window.__heatmap = { scene, camera, controls, heatmap, timeline, setPeriod, setIndex, setLang, doShare, captureBrandedPng: (o) => captureBrandedPng({ renderer, scene, camera, ...o }), PERIODS, INDICES, LANGS, get index() { return currentIndex; }, get lang() { return currentLang; }, get loaded() { return [...LOADED.keys()]; } };
