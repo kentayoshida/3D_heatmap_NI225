@@ -12,7 +12,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOW30, NASDAQ100 } from '../server/us-constituents.mjs';
+import { DOW30, NASDAQ100, SENSEX, NIFTY50 } from '../server/us-constituents.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -123,3 +123,12 @@ emit('DOW30', dow, 'dow30.js');
 const ndx = build(NASDAQ100, { seed: 33001, contribScale: 2.4 });
 ndx.TIMELINE = buildTimeline(NASDAQ100, 77001);
 emit('NASDAQ100', ndx, 'nasdaq100.js');
+// SENSEX: cap-weighted → contribution ≈ ^BSESN level × weight × (%/100). With the
+// index near ~82000 and weight in %, contribScale ≈ 82000/100/100 ≈ 8.2.
+const sensex = build(SENSEX, { seed: 44001, contribScale: 8.2 });
+sensex.TIMELINE = buildTimeline(SENSEX, 88001);
+emit('SENSEX', sensex, 'sensex.js');
+// Nifty 50: cap-weighted → ^NSEI near ~25000 → contribScale ≈ 25000/100/100 ≈ 2.5.
+const nifty = build(NIFTY50, { seed: 55001, contribScale: 2.5 });
+nifty.TIMELINE = buildTimeline(NIFTY50, 99001);
+emit('NIFTY50', nifty, 'nifty50.js');

@@ -7,7 +7,7 @@ export const LANGS = ['ja', 'en'];
 export const UI = {
   ja: {
     langLabel: '日本語',
-    asOf: 'データ基準日', sample: 'サンプル', jst: 'JST', et: 'ET',
+    asOf: 'データ基準日', sample: 'サンプル', jst: 'JST', et: 'ET', ist: 'IST',
     legHeight: '<b>高さ</b> = 騰落率（0%基準・{dir}）',
     dirUp: '上=プラス/下=マイナス', dirDown: '上=マイナス/下=プラス',
     legArea: '<b>面積</b> = 寄与度',
@@ -32,7 +32,7 @@ export const UI = {
   },
   en: {
     langLabel: 'EN',
-    asOf: 'As of', sample: 'sample', jst: 'JST', et: 'ET',
+    asOf: 'As of', sample: 'sample', jst: 'JST', et: 'ET', ist: 'IST',
     legHeight: '<b>Height</b> = Change % (0% base · {dir})',
     dirUp: 'up = gain / down = loss', dirDown: 'up = loss / down = gain',
     legArea: '<b>Area</b> = Contribution',

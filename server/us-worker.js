@@ -1,6 +1,8 @@
-// Serverless proxy (Cloudflare Worker) for the US indices: Dow Jones Industrial
-// Average (?index=dow) and Nasdaq-100 (?index=nasdaq). Fetches daily bars from
-// Yahoo Finance, computes 寄与度, and returns the exact JSON the frontend expects:
+// Serverless proxy (Cloudflare Worker) for the international indices served from
+// Yahoo Finance: Dow Jones Industrial Average (?index=dow), Nasdaq-100
+// (?index=nasdaq), BSE Sensex (?index=sensex) and Nifty 50 (?index=nifty).
+// Fetches daily bars from Yahoo Finance, computes 寄与度, and returns the exact
+// JSON the frontend expects:
 //   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
 //
 // Yahoo Finance has no auth (no key/secret needed) but doesn't allow in-browser
@@ -28,7 +30,10 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
 const PAYLOAD_TTL = 600; // seconds
 const SPARK_BATCH = 20;  // symbols per spark request (keeps URLs + subrequests small)
-const INDEX_SYMBOL = { dow: '^DJI', nasdaq: '^NDX' };
+const INDEX_SYMBOL = { dow: '^DJI', nasdaq: '^NDX', sensex: '^BSESN', nifty: '^NSEI' };
+// Cap-weighted indices carry a per-name index weight% and get 寄与度 =
+// level × weight% × change% (vs. the price-weighted Dow's (close−base)/divisor).
+const CAP_WEIGHTED = new Set(['nasdaq', 'sensex', 'nifty']);
 
 const _cache = new Map(); // index -> { data, exp }
 
@@ -39,7 +44,7 @@ export default {
     const url = new URL(request.url);
     const index = (url.searchParams.get('index') || 'dow').toLowerCase();
     if (!INDEX_SYMBOL[index]) {
-      return json({ error: `unknown index '${index}' (use dow or nasdaq)` }, 400, cors);
+      return json({ error: `unknown index '${index}' (use dow, nasdaq, sensex or nifty)` }, 400, cors);
     }
     try {
       const now = Date.now();
@@ -102,7 +107,7 @@ async function buildIndex(index) {
 // the already-fetched series (no extra requests). Exported for unit tests.
 const TIMELINE_DAYS = 5;
 function fixedSize(index, c, s) {
-  if (index === 'nasdaq') return Math.max(c.weight ?? 0, 0);
+  if (CAP_WEIGHTED.has(index)) return Math.max(c.weight ?? 0, 0); // cap weight%
   return s && s.length ? lastClose(s) : 0; // dow: share price
 }
 function longestSeries(seriesByCode) {
@@ -166,7 +171,7 @@ function shapePeriod(index, cfg, seriesByCode, { p, baseDate, latest, divisor, i
     const diff = close - base;
     const changePct = (diff / base) * 100;
     let contribution;
-    if (index === 'nasdaq') {
+    if (CAP_WEIGHTED.has(index)) {
       // point contribution to a cap-weighted index ≈ level × weight × return.
       const level = indexLevel || 100;
       contribution = level * ((c.weight ?? 0) / 100) * (changePct / 100);

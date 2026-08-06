@@ -14,10 +14,12 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOW30, NASDAQ100 } from './us-constituents.mjs';
+import { DOW30, NASDAQ100, SENSEX, NIFTY50 } from './us-constituents.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const QQQ_CSV = resolve(__dirname, 'qqq_holdings.csv');
+const SENSEX_CSV = resolve(__dirname, 'sensex_weights.csv');
+const NIFTY_CSV = resolve(__dirname, 'nifty_weights.csv');
 
 // Nominal Dow divisor (fallback only; the Worker derives it live from ^DJI).
 const DOW_DIVISOR = 0.16268;
@@ -34,18 +36,60 @@ if (existsSync(QQQ_CSV)) {
   nasdaqConstituents = NASDAQ100.map(([code, name, sector, weight]) => ({ code, name, sector, weight }));
 }
 
+// India indices (cap-weighted, like Nasdaq): weight = published index %. Rows come
+// from us-constituents.mjs; an optional Ticker,Weight CSV (server/sensex_weights.csv
+// / server/nifty_weights.csv, Ticker matching the code e.g. 500180.BO / HDFCBANK.NS)
+// overrides those weights with the latest official figures.
+const sensexConstituents = capConstituents(SENSEX, SENSEX_CSV);
+const niftyConstituents = capConstituents(NIFTY50, NIFTY_CSV);
+
 const params = {
-  _note: 'US index params for us-worker.js. Dow = price-weighted (weight = live price). Nasdaq = cap-weighted (weight = index %).',
+  _note: 'International index params for us-worker.js. Dow = price-weighted (weight = live price). Nasdaq/Sensex/Nifty = cap-weighted (weight = index %).',
   asOfParams: new Date().toISOString().slice(0, 10),
   dow: { divisor: DOW_DIVISOR, constituents: dowConstituents },
   nasdaq: { constituents: nasdaqConstituents },
+  sensex: { constituents: sensexConstituents },
+  nifty: { constituents: niftyConstituents },
 };
 
 writeFileSync(resolve(__dirname, 'us-index-params.json'), JSON.stringify(params, null, 2));
-console.log(`wrote us-index-params.json — Dow ${dowConstituents.length}, Nasdaq ${nasdaqConstituents.length}`);
+console.log(`wrote us-index-params.json — Dow ${dowConstituents.length}, Nasdaq ${nasdaqConstituents.length}, Sensex ${sensexConstituents.length}, Nifty ${niftyConstituents.length}`);
 console.log(`nasdaq source: ${nasdaqSource}`);
 if (dowConstituents.length !== 30) console.log(`NOTE: expected 30 Dow names, got ${dowConstituents.length}.`);
 if (nasdaqConstituents.length < 99) console.log(`NOTE: expected ~100 Nasdaq names, got ${nasdaqConstituents.length}.`);
+if (sensexConstituents.length !== 30) console.log(`NOTE: expected 30 Sensex names, got ${sensexConstituents.length}.`);
+if (niftyConstituents.length !== 50) console.log(`NOTE: expected 50 Nifty names, got ${niftyConstituents.length}.`);
+
+// ---- cap-weighted universe [ticker,name,sector,weight] (+ optional CSV override) --
+function capConstituents(seed, csvPath) {
+  const rows = seed.map(([code, name, sector, weight]) => ({ code, name, sector, weight }));
+  if (!existsSync(csvPath)) return rows;
+  const overrides = parseWeightCsv(readFileSync(csvPath, 'utf8')); // Map<UPPER ticker, weight>
+  for (const r of rows) {
+    const w = overrides.get(r.code.toUpperCase());
+    if (Number.isFinite(w)) r.weight = w;
+  }
+  return rows;
+}
+
+// Minimal Ticker,Weight CSV → Map<UPPER ticker, weight%>. Locates the ticker and
+// weight columns by header name (case-insensitive); ignores other columns.
+function parseWeightCsv(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  const map = new Map();
+  if (!lines.length) return map;
+  const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+  const ti = header.findIndex((h) => h.includes('ticker') || h.includes('symbol') || h.includes('code'));
+  const wi = header.findIndex((h) => h.includes('weight') || h.includes('%'));
+  if (ti < 0 || wi < 0) return map;
+  for (let i = 1; i < lines.length; i++) {
+    const f = splitCsvLine(lines[i]);
+    const code = (f[ti] || '').toUpperCase().trim();
+    const weight = Number(String(f[wi] || '').replace(/[%\s,]/g, ''));
+    if (code && Number.isFinite(weight) && weight > 0) map.set(code, Math.round(weight * 1000) / 1000);
+  }
+  return map;
+}
 
 // ---- Invesco QQQ holdings CSV → [{code,name,sector,weight}] ------------------
 // Header varies but includes a ticker column, a "% Weight"/"Weight" column, and

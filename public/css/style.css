@@ -122,7 +122,11 @@ html, body {
   top: 14px; right: 16px;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
-#lang .period-btn { padding: 5px 12px; font-size: 12px; }
+/* Compact pills for the top-right stack (index + language) so the 5-index bar
+   stays clear of the centered period bar on desktop widths. */
+#indices .period-btn,
+#lang .period-btn { padding: 5px 10px; font-size: 12px; }
+#indices { gap: 2px; }
 
 /* ---- top bar / period selector ---- */
 #topbar {
@@ -328,16 +332,21 @@ html, body {
 }
 .tl-date { color: var(--muted); font-size: 11.5px; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
 
-@media (max-width: 560px) {
-  #legend { max-width: 220px; font-size: 11.5px; padding: 10px 12px; }
-  .period-btn { padding: 6px 10px; font-size: 12px; }
-  /* move the index/language stack directly under the centered period bar */
+/* With 5 indices the right-pinned index bar would overlap the centered period bar
+   until ~1250px wide, so below that drop the index/language stack directly under
+   the period bar (same placement the mobile layout uses). */
+@media (max-width: 1250px) {
   #topright {
     top: 78px; right: auto;
     left: 50%;
     transform: translateX(-50%);
     align-items: center;
   }
+}
+
+@media (max-width: 560px) {
+  #legend { max-width: 220px; font-size: 11.5px; padding: 10px 12px; }
+  .period-btn { padding: 6px 10px; font-size: 12px; }
   /* keep the timeline bar clear of the bottom legend/controls */
   #timeline { bottom: auto; top: 128px; gap: 8px; padding: 7px 10px; }
   .tl-slider { width: 40vw; max-width: 190px; }
