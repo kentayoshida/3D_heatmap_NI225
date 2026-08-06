@@ -46,9 +46,11 @@
     <div id="controls" class="panel">
       <label class="ctl-row" for="opacity">
         <span class="ctl-label" id="lbl-opacity">透明度</span>
-        <input id="opacity" class="ctl-slider" type="range" min="0" max="100" step="1" value="0"
+        <!-- Default to 100% (X-ray / frame): outline-only bars suit the floating-in-space look.
+             buildOpacityControl applies this value on init and setData re-applies it per frame. -->
+        <input id="opacity" class="ctl-slider" type="range" min="0" max="100" step="1" value="100"
                aria-label="opacity" />
-        <output id="opacity-val" class="ctl-val">0%</output>
+        <output id="opacity-val" class="ctl-val">100%</output>
       </label>
       <div class="ctl-row">
         <span class="ctl-label" id="lbl-invert">向き</span>
