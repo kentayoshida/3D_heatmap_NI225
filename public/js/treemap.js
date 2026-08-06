@@ -1,7 +1,9 @@
 // Squarified treemap (Bruls, Huizing & van Wijk 2000), two-level:
 // level 1 = sectors, level 2 = stocks within each sector.
-// Footprint area is proportional to |contribution| so the base plane matches the
-// classic 2D heatmap; the 3rd dimension (height) is added later by the renderer.
+// Footprint area is proportional to each name's index weight% (`weight`), so a
+// bar's volume (area × height, height = change%) reads as its 寄与度. Older sample
+// payloads without `weight` fall back to |contribution|. Height is added later by
+// the renderer.
 //
 // Coordinates: the base plane lies on XZ, centered at the origin. layout() returns
 // stock footprints as { ...stock, x, z, w, d } where (x,z) is the box CENTER and
@@ -72,10 +74,14 @@ function squarify(items, rect) {
  * @param {number} gap  inset applied inside each sector block (world units)
  * @returns {{stocks:Array, sectors:Array}}
  */
+// Area source: index weight% (`weight`); fall back to |contribution| for older
+// sample payloads that predate the weight field.
+const areaOf = (c) => (c.weight != null ? Math.max(c.weight, 0) : Math.abs(c.contribution));
+
 export function layoutTreemap(constituents, W, D, gap = 0.7) {
   const bySector = new Map();
   for (const c of constituents) {
-    const v = Math.abs(c.contribution);
+    const v = areaOf(c);
     if (!(v > 0)) continue;
     let g = bySector.get(c.sector);
     if (!g) { g = { sector: c.sector, value: 0, items: [] }; bySector.set(c.sector, g); }
@@ -106,7 +112,7 @@ export function layoutTreemap(constituents, W, D, gap = 0.7) {
       d: sr.h,
       inner,
     });
-    const rects = squarify(g.items.map((c) => ({ value: Math.abs(c.contribution), ref: c })), inner);
+    const rects = squarify(g.items.map((c) => ({ value: areaOf(c), ref: c })), inner);
     for (const r of rects) {
       stocks.push({
         ...r.ref,

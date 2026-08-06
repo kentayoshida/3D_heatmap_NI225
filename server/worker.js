@@ -1,8 +1,10 @@
 // Serverless proxy (Cloudflare Worker style; adaptable to Vercel/Lambda).
 //
 // Holds the J-Quants V2 API key, fetches daily price bars per period, computes
-// 寄与度 from index params, and returns the exact JSON the frontend expects:
-//   { "1D": { asOf, constituents:[{code,name,sector,changePct,contribution}] }, ... }
+// weight% + 寄与度 from index params, and returns the JSON the frontend expects:
+//   { "1D": { asOf, constituents:[{code,name,sector,changePct,weight,contribution}] }, ... }
+// Encoding: area ∝ weight (price weight = paf×close / Σ), height ∝ changePct, so a
+// bar's volume (area × height) ≈ contribution (the name's index-point impact).
 //
 // J-Quants V2 (https://jpx-jquants.com) uses API-KEY auth (x-api-key header; no
 // token exchange, no expiry) and is END-OF-DAY (daily) data, not intraday. So
@@ -84,9 +86,9 @@ async function buildAllPeriods(env) {
 
 // ---- timeline: last N trading days (daily change) with a FIXED footprint -----
 // Walks back from the latest trading date collecting N+1 daily quote maps, then
-// shapes N frames whose area (contribution) is pinned to each name's fixed weight
-// (paf × latest close) so the treemap holds still while height/color (that day's
-// change%) animate. Reuses the same daily-bars fetch as the periods (cached).
+// shapes N frames whose area (weight%) is pinned to each name's fixed footprint
+// (paf × latest close, normalized) so the treemap holds still while height/color
+// (that day's change%) animate. Reuses the same daily-bars fetch as the periods.
 const TIMELINE_DAYS = 5;
 async function buildTimeline(latest, key, n = TIMELINE_DAYS) {
   const days = [latest];
@@ -105,38 +107,58 @@ async function buildTimeline(latest, key, n = TIMELINE_DAYS) {
 // Exported for unit tests.
 function shapeTimeline(days, latestMap) {
   if (!days || days.length < 2) return { frames: [] };
+  const wmap = weightMapFromLatest(latestMap); // FIXED footprint → weight% (area)
   const frames = [];
   for (let i = 1; i < days.length; i++) {
     const cur = days[i].map, prev = days[i - 1].map;
     const constituents = PARAMS.constituents.map((c) => {
       const c4 = code4(c.code);
-      const lc = latestMap.get(c4);
-      const size = (c.paf ?? 1) * (lc != null ? lc : 0); // FIXED footprint (weight)
       const close = cur.get(c4), base = prev.get(c4);
       const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
-      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), contribution: round2(size) };
+      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), weight: round2(wmap.get(c.code) ?? 0) };
     });
     frames.push({ asOf: fmtDash(days[i].date), constituents });
   }
   return { frames };
 }
 
-// ---- 寄与度 math ------------------------------------------------------------
+// ---- weight% + 寄与度 math --------------------------------------------------
+// Price weight (area): each name's share of the price-weighted index =
+// paf × close / Σ(paf × close), as a percent. A snapshot from the latest closes,
+// so it is period-independent (the treemap footprint holds still across 1D…1Y).
+function weightMapFromLatest(latestMap) {
+  let total = 0;
+  for (const c of PARAMS.constituents) {
+    const lc = latestMap.get(code4(c.code));
+    if (lc != null) total += (c.paf ?? 1) * lc;
+  }
+  const map = new Map();
+  for (const c of PARAMS.constituents) {
+    const lc = latestMap.get(code4(c.code));
+    map.set(c.code, (lc != null && total > 0) ? (((c.paf ?? 1) * lc) / total) * 100 : 0);
+  }
+  return map;
+}
+
 // close/base use the adjustment close (split-adjusted). contribution over the
-// period is approximated as PAF × (close − base) / current-divisor (index points).
+// period is approximated as PAF × (close − base) / current-divisor (index points)
+// ≈ the bar's volume (area × height).
 function shapePeriod(latestMap, baseMap, asOfDate) {
   const divisor = PARAMS.divisor;
+  const wmap = weightMapFromLatest(latestMap);
   const constituents = PARAMS.constituents.map((c) => {
     const c4 = code4(c.code);
+    const w = round2(wmap.get(c.code) ?? 0);
     const close = latestMap.get(c4);
     const base = baseMap.get(c4);
     if (close == null || base == null || !base) {
-      return { code: c.code, name: c.name, sector: c.sector, changePct: 0, contribution: 0 };
+      return { code: c.code, name: c.name, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
     }
     const diff = close - base;
     return {
       code: c.code, name: c.name, sector: c.sector,
       changePct: round2((diff / base) * 100),
+      weight: w,
       contribution: round2(((c.paf ?? 1) * diff) / divisor),
     };
   });
@@ -212,4 +234,4 @@ function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-dig
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapePeriod, shapeTimeline, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray, corsHeaders };
+export const _internals = { shapePeriod, shapeTimeline, weightMapFromLatest, periodBaseDates, addMonths, addDays, fmt, code4, pickPrice, firstArray, corsHeaders };

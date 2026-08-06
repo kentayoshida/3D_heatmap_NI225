@@ -31,12 +31,12 @@ test('us buildTimeline (nasdaq): 5 frames, fixed weight footprint, daily change%
   const { frames } = US.buildTimeline('nasdaq', cfg, seriesByCode, indexSeries);
   assert.equal(frames.length, 5);
 
-  // footprint (contribution) == cap weight% and is identical on every frame
+  // footprint (weight%) == cap weight% and is identical on every frame
   for (const f of frames) {
     const a = f.constituents.find((c) => c.code === 'AAA');
     const b = f.constituents.find((c) => c.code === 'BBB');
-    assert.equal(a.contribution, 10);
-    assert.equal(b.contribution, 4);
+    assert.equal(a.weight, 10);
+    assert.equal(b.weight, 4);
   }
   // frame 0 = day1 vs day0 → AAA +10%
   assert.equal(frames[0].constituents.find((c) => c.code === 'AAA').changePct, 10);
@@ -46,14 +46,14 @@ test('us buildTimeline (nasdaq): 5 frames, fixed weight footprint, daily change%
   assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25']);
 });
 
-test('us buildTimeline (dow): footprint = latest share price, constant across frames', () => {
+test('us buildTimeline (dow): footprint = normalized price weight%, constant across frames', () => {
   const cfg = { constituents: [{ code: 'CCC', name: 'Gamma', sector: 'Ind', priceProxy: 0 }] };
   const dates = [0, 1, 2, 3, 4, 5].map((i) => new Date(Date.UTC(2026, 6, 20 + i)));
   const closes = [200, 202, 198, 198, 210, 220];
   const seriesByCode = new Map([['CCC', dates.map((t, i) => ({ t, c: closes[i] }))]]);
   const { frames } = US.buildTimeline('dow', cfg, seriesByCode, seriesByCode.get('CCC'));
   assert.equal(frames.length, 5);
-  for (const f of frames) assert.equal(f.constituents[0].contribution, 220); // latest close
+  for (const f of frames) assert.equal(f.constituents[0].weight, 100); // sole name → 100%
   // frame 0: 202 vs 200 = +1%
   assert.equal(frames[0].constituents[0].changePct, 1);
 });
@@ -65,21 +65,38 @@ test('us cap-weighted (sensex/nifty): weight footprint + level×weight%×change%
   const seriesByCode = new Map([['500325.BO', dates.map((t, i) => ({ t, c: closes[i] }))]]);
   const indexSeries = dates.map((t, i) => ({ t, c: 80000 + i })); // ^BSESN level ≈ 80005
 
-  // timeline footprint == cap weight (like nasdaq), constant across frames
+  // timeline footprint (weight%) == cap weight (like nasdaq), constant across frames
   const { frames } = US.buildTimeline('sensex', cfg, seriesByCode, indexSeries);
   assert.equal(frames.length, 5);
-  for (const f of frames) assert.equal(f.constituents[0].contribution, 9.6);
+  for (const f of frames) assert.equal(f.constituents[0].weight, 9.6);
 
-  // shapePeriod (1D): contribution = level × weight% × change%
+  // shapePeriod (1D): area = weight%, height/color = change%, contribution (volume)
+  // = level × weight% × change%.
   const level = 80005;
   const period = US.shapePeriod('sensex', cfg, seriesByCode, {
     p: '1D', baseDate: dates[4], latest: dates[5], divisor: 1, indexLevel: level,
   });
   const c = period.constituents[0];
+  assert.equal(c.weight, 9.6); // area source
   const expChange = ((1050 - 1020) / 1020) * 100;
   assert.ok(Math.abs(c.changePct - Math.round(expChange * 100) / 100) < 1e-9);
   const expContrib = level * (9.6 / 100) * (expChange / 100);
   assert.ok(Math.abs(c.contribution - Math.round(expContrib * 100) / 100) < 1e-9);
+});
+
+test('us weightSnapshot (dow): price share of Σ latest close, as a percent', () => {
+  const cfg = { constituents: [
+    { code: 'A', name: 'A', sector: 's' },
+    { code: 'B', name: 'B', sector: 's' },
+  ] };
+  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
+  const seriesByCode = new Map([
+    ['A', [d(0), d(1)].map((t, i) => ({ t, c: [90, 300][i] }))], // latest 300
+    ['B', [d(0), d(1)].map((t, i) => ({ t, c: [80, 100][i] }))], // latest 100
+  ]);
+  const map = US.weightSnapshot('dow', cfg, seriesByCode); // total 400
+  assert.ok(Math.abs(map.get('A') - 75) < 1e-9);  // 300/400
+  assert.ok(Math.abs(map.get('B') - 25) < 1e-9);  // 100/400
 });
 
 test('us capWeightMap: weights track price move since ref date, renormalized to 100', () => {
@@ -170,11 +187,21 @@ test('nikkei shapeTimeline: fixed footprint (paf×latest close), daily change%',
   // change%: frame0 = +10, frame1 = -10
   assert.equal(pick(frames[0]).changePct, 10);
   assert.equal(pick(frames[1]).changePct, -10);
-  // footprint identical across frames (paf × 99), and > 0
-  const a = pick(frames[0]).contribution, b = pick(frames[1]).contribution;
+  // footprint (weight%) identical across frames, and > 0
+  const a = pick(frames[0]).weight, b = pick(frames[1]).weight;
   assert.equal(a, b);
   assert.ok(a > 0);
   assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-23', '2026-07-24']);
+});
+
+test('nikkei weightMapFromLatest: paf×close share of Σ, as a percent summing ~100', () => {
+  // Two real constituent codes from the bundled params.
+  const latestMap = new Map([['6857', 100], ['8035', 100]]);
+  const map = NIKKEI.weightMapFromLatest(latestMap);
+  const a = map.get('6857'), b = map.get('8035');
+  assert.ok(a > 0 && b > 0);
+  // only these two names have a latest close, so their weights sum to 100.
+  assert.ok(Math.abs(a + b - 100) < 1e-9);
 });
 
 test('nikkei shapeTimeline: fewer than 2 days → no frames', () => {
