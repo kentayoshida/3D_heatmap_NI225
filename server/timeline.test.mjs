@@ -169,56 +169,63 @@ test('us parseSpark: junk payload → empty map', () => {
   assert.equal(US.parseSpark({ spark: { result: null } }).size, 0);
 });
 
-// ---- Nikkei worker: series-based shapers (per-code continuous series) --------
-// The refactor fetches one adjusted series per constituent so latest and base
-// share a single adjustment basis (no cross-snapshot split leak). These cover the
-// pure shaping over that series. Codes are real bundled-params codes so PARAMS hits.
-test('nikkei buildTimeline: fixed footprint (paf×latest close), daily change%', () => {
-  const dates = [0, 1, 2, 3, 4, 5].map((i) => new Date(Date.UTC(2026, 6, 20 + i)));
-  const mk = (vals) => dates.map((t, i) => ({ t, c: vals[i] }));
-  const seriesByCode = new Map([
-    ['6857', mk([100, 110, 99, 99, 108, 108])], // +10%, -10%, 0%, +9.09%, 0%
-    ['8035', mk([50, 50, 55, 55, 55, 60])],
-  ]);
-  const { frames } = NIKKEI.buildTimeline(seriesByCode);
-  assert.equal(frames.length, 5);
-
-  const pick = (f, code) => f.constituents.find((c) => c.code === code);
-  // frame 0 = day1 vs day0 → 6857 +10%; frame 1 = day2 vs day1 → 6857 −10%.
-  assert.equal(pick(frames[0], '6857').changePct, 10);
-  assert.equal(pick(frames[1], '6857').changePct, -10);
-  // footprint (weight%) identical across every frame, and > 0.
-  const a = pick(frames[0], '6857').weight, b = pick(frames[1], '6857').weight;
-  assert.equal(a, b);
-  assert.ok(a > 0);
-  assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25']);
+// ---- Nikkei worker: per-date snapshots + adjusted/raw reconciliation ---------
+// Free-plan design: one market snapshot per date (few subrequests). Each snapshot
+// carries adjusted (a) + raw (r) close; reconcileChange() picks the true move so a
+// split (only the raw moves) or a stale adjustment close (only the adjusted moves)
+// never leaks in. Codes are real bundled-params codes so PARAMS lookups hit.
+test('nikkei reconcileChange: normal, split, adjustment glitch, and missing sides', () => {
+  // normal day: adjusted and raw agree → trust adjusted.
+  const norm = NIKKEI.reconcileChange({ a: 101, r: 101 }, { a: 100, r: 100 });
+  assert.ok(Math.abs(norm.pct - 1) < 1e-9);
+  // ANA-style adjustment glitch: adjusted −33.95% (base 4789), raw −1.16% (base
+  // 3200). They diverge → take the smaller-magnitude (raw) move.
+  const glitch = NIKKEI.reconcileChange({ a: 3163, r: 3163 }, { a: 4789, r: 3200 });
+  assert.ok(Math.abs(glitch.pct - ((3163 - 3200) / 3200) * 100) < 1e-9);
+  // genuine 3:2 split with a small real move: raw drops ~-33% (base 150), adjusted
+  // ~+1% (base 99). Diverge → take the adjusted (smaller-magnitude) real move.
+  const split = NIKKEI.reconcileChange({ a: 100, r: 100 }, { a: 99, r: 150 });
+  assert.ok(Math.abs(split.pct - ((100 - 99) / 99) * 100) < 1e-9);
+  // only one basis present → use it.
+  assert.ok(Math.abs(NIKKEI.reconcileChange({ a: 55, r: null }, { a: 50, r: null }).pct - 10) < 1e-9);
+  assert.equal(NIKKEI.reconcileChange(null, { a: 1, r: 1 }), null);
 });
 
-test('nikkei weightSnapshot: paf×close share of Σ, as a percent summing ~100', () => {
-  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
-  const mk = (vals) => [d(0), d(1)].map((t, i) => ({ t, c: vals[i] }));
-  const seriesByCode = new Map([['6857', mk([90, 100])], ['8035', mk([90, 100])]]);
-  const map = NIKKEI.weightSnapshot(seriesByCode);
+test('nikkei shapePeriod (1D): adjustment glitch reconciled to the real move', () => {
+  // latest map + 1D base map (Map<code4,{a,r}>). 9202 adjusted base is a stale 4789
+  // (→ spurious −33.95%); raw base 3200 → real −1.16%. Must report ~−1.16%.
+  const latestMap = new Map([['9202', { a: 3163, r: 3163 }]]);
+  const baseMap = new Map([['9202', { a: 4789, r: 3200 }]]);
+  const period = NIKKEI.shapePeriod(latestMap, baseMap, new Date(Date.UTC(2026, 7, 6)));
+  const c = period.constituents.find((x) => x.code === '9202');
+  const exp = Math.round(((3163 - 3200) / 3200) * 100 * 100) / 100; // = -1.16
+  assert.equal(c.changePct, exp);
+  assert.notEqual(c.changePct, -33.95);
+  assert.ok(c.weight > 0);                 // sole name with a close → 100%
+  assert.equal(c.nameEn, 'ANA HOLDINGS');  // English name flows through
+});
+
+test('nikkei weightMapFromLatest: paf×close share of Σ, as a percent summing ~100', () => {
+  const latestMap = new Map([['6857', { a: 100, r: 100 }], ['8035', { a: 100, r: 100 }]]);
+  const map = NIKKEI.weightMapFromLatest(latestMap);
   const a = map.get('6857'), b = map.get('8035');
   assert.ok(a > 0 && b > 0);
-  // only these two names have a series, so their weights sum to 100.
-  assert.ok(Math.abs(a + b - 100) < 1e-9);
+  assert.ok(Math.abs(a + b - 100) < 1e-9); // only these two have a close → sum 100
 });
 
-test('nikkei shapePeriod (1D): change from the same series (split-safe, no basis leak)', () => {
-  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
-  // ANA-like: latest 3163 vs prev 3200 → −1.16% — NOT the spurious −33.95% a
-  // cross-snapshot adjustment-basis mismatch produced (prev day at 4789).
-  const seriesByCode = new Map([['9202', [d(0), d(1), d(2)].map((t, i) => ({ t, c: [3100, 3200, 3163][i] }))]]);
-  const periods = NIKKEI.shapeAllPeriods(seriesByCode);
-  const c = periods['1D'].constituents.find((x) => x.code === '9202');
-  const exp = ((3163 - 3200) / 3200) * 100;
-  assert.ok(Math.abs(c.changePct - Math.round(exp * 100) / 100) < 1e-9);
-  assert.ok(c.weight > 0); // sole name with a series → 100%
-  assert.equal(c.nameEn, 'ANA HOLDINGS'); // English name flows through
+test('nikkei shapeTimeline: fixed footprint, daily change%, reconciled', () => {
+  const day = (dstr, a) => ({ date: new Date(dstr), map: new Map([['6857', { a, r: a }]]) });
+  const days = [day('2026-07-22', 100), day('2026-07-23', 110), day('2026-07-24', 99)];
+  const latestMap = new Map([['6857', { a: 99, r: 99 }]]);
+  const { frames } = NIKKEI.shapeTimeline(days, latestMap);
+  assert.equal(frames.length, 2);
+  const pick = (f) => f.constituents.find((c) => c.code === '6857');
+  assert.equal(pick(frames[0]).changePct, 10);  // 110 vs 100
+  assert.equal(pick(frames[1]).changePct, -10); // 99 vs 110
+  assert.equal(pick(frames[0]).weight, pick(frames[1]).weight); // fixed footprint
+  assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-23', '2026-07-24']);
 });
 
-test('nikkei buildTimeline: too-short series → no frames', () => {
-  const one = new Map([['6857', [{ t: new Date(), c: 5 }]]]);
-  assert.deepEqual(NIKKEI.buildTimeline(one).frames, []);
+test('nikkei shapeTimeline: fewer than 2 days → no frames', () => {
+  assert.deepEqual(NIKKEI.shapeTimeline([{ date: new Date(), map: new Map() }], new Map()).frames, []);
 });
