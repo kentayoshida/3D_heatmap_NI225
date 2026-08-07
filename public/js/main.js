@@ -372,11 +372,13 @@ function animate() {
   controls.update();
   space.update(dt);
   heatmap.update(dt);
+  heatmap.updateLabels(camera); // reveal/hide stock names by zoom level
   renderer.render(scene, camera);
 }
 // Paint the first frame under the veil (bars are already built), then reveal.
 // rAF is preferred (fires right after a paint); a short timeout is a fallback for
 // environments where rAF is throttled.
+heatmap.updateLabels(camera); // first LOD pass before the initial paint
 renderer.render(scene, camera);
 animate();
 requestAnimationFrame(() => loading.hide());
