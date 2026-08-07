@@ -279,8 +279,10 @@ Yahoo は **APIキー不要** ですが、ブラウザ直叩き（CORS）とレ�
 「1銘柄1リクエスト」方式では NASDAQ 100（≈101リクエスト）が上限を超えてサンプルへ
 フォールバックしていました。
 
-- Yahooのティッカー：**BSE**（SENSEX）は数値スクリップコード＋`.BO`（例 `500325.BO`＝Reliance）、
-  **NSE**（Nifty 50）はシンボル＋`.NS`（例 `RELIANCE.NS`）。指数レベルは `^BSESN` / `^NSEI`。
+- Yahooのティッカー：インド2指数（SENSEX / Nifty 50）とも **NSE** シンボル＋`.NS`（例 `RELIANCE.NS`）を
+  使います。SENSEX採用銘柄はすべてNSEにも上場しており、Yahoo上のNSE(`.NS`)日足はBSE(`.BO`)より
+  更新が速く欠損が少ないため、**同一銘柄の騰落率がSENSEXとNiftyで一致**します（BSE系列は当日値が
+  古い/欠損しやすく、両指数で食い違う原因でした）。指数レベルのみ `^BSESN` / `^NSEI` を使用します。
 - 構成銘柄・時価総額ウェイトは `server/us-constituents.mjs`（同梱シード）にあり、
   `node server/build-us-params.mjs` で `server/us-index-params.json` を生成します。
 - **NASDAQのウェイトを最新化**するには、Invesco QQQ の保有CSVを

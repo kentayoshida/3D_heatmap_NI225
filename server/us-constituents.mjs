@@ -154,43 +154,48 @@ export const NASDAQ100 = [
 // (like the Nasdaq-100) each row carries the index weight in % — the Worker turns
 // it into 寄与度 as ^BSESN/^NSEI level × weight% × change%.
 //
-// Yahoo tickers: BSE = numeric scrip code + ".BO" (e.g. 500325.BO = Reliance);
-// NSE = symbol + ".NS" (e.g. RELIANCE.NS). Sectors are mapped to the same GICS
-// labels the other indices use so the treemap groups consistently. Weights are the
-// published index weight(%) — refresh from the BSE/NSE fact sheets or drop
-// server/sensex_weights.csv / server/nifty_weights.csv (Ticker,Weight) to override.
+// Yahoo tickers: BOTH indices use NSE symbols + ".NS" (e.g. RELIANCE.NS). SENSEX
+// constituents are all cross-listed on the NSE, and NSE (.NS) daily data on Yahoo
+// is far more reliable/timely than BSE (.BO) — which was often stale or missing,
+// making a name's change% disagree between the two indices. Pulling both from the
+// NSE series keeps a shared name's change% identical across SENSEX and Nifty. The
+// SENSEX membership/weights remain the BSE Sensex's (only the price feed is NSE).
+// Sectors map to the same GICS labels the other indices use so the treemap groups
+// consistently. Weights are the published index weight(%) — refresh from the
+// BSE/NSE fact sheets or drop server/sensex_weights.csv / server/nifty_weights.csv
+// (Ticker,Weight) to override.
 
 export const SENSEX = [
-  ['500180.BO', 'HDFC Bank', 'Financials', 13.69],
-  ['532174.BO', 'ICICI Bank', 'Financials', 10.89],
-  ['500325.BO', 'Reliance Industries', 'Energy', 9.60],
-  ['532454.BO', 'Bharti Airtel', 'Communication Services', 6.48],
-  ['500510.BO', 'Larsen & Toubro', 'Industrials', 5.01],
-  ['500112.BO', 'State Bank of India', 'Financials', 4.65],
-  ['532215.BO', 'Axis Bank', 'Financials', 4.12],
-  ['500209.BO', 'Infosys', 'Information Technology', 4.07],
-  ['500520.BO', 'Mahindra & Mahindra', 'Consumer Discretionary', 3.03],
-  ['500247.BO', 'Kotak Mahindra Bank', 'Financials', 3.02],
-  ['500034.BO', 'Bajaj Finance', 'Financials', 2.97],
-  ['500875.BO', 'ITC', 'Consumer Staples', 2.95],
-  ['532540.BO', 'Tata Consultancy Services', 'Information Technology', 2.29],
-  ['543320.BO', 'Eternal', 'Consumer Discretionary', 2.27],
-  ['524715.BO', 'Sun Pharmaceutical', 'Health Care', 2.22],
-  ['500696.BO', 'Hindustan Unilever', 'Consumer Staples', 2.07],
-  ['500114.BO', 'Titan Company', 'Consumer Discretionary', 2.05],
-  ['532500.BO', 'Maruti Suzuki', 'Consumer Discretionary', 1.96],
-  ['532555.BO', 'NTPC', 'Utilities', 1.77],
-  ['500470.BO', 'Tata Steel', 'Materials', 1.71],
-  ['500049.BO', 'Bharat Electronics', 'Industrials', 1.61],
-  ['532538.BO', 'UltraTech Cement', 'Materials', 1.50],
-  ['532921.BO', 'Adani Ports', 'Industrials', 1.46],
-  ['532898.BO', 'Power Grid', 'Utilities', 1.39],
-  ['532281.BO', 'HCL Technologies', 'Information Technology', 1.34],
-  ['500820.BO', 'Asian Paints', 'Consumer Discretionary', 1.31],
-  ['539448.BO', 'InterGlobe Aviation', 'Industrials', 1.30],
-  ['532978.BO', 'Bajaj Finserv', 'Financials', 1.20],
-  ['500251.BO', 'Trent', 'Consumer Discretionary', 1.05],
-  ['532755.BO', 'Tech Mahindra', 'Information Technology', 1.00],
+  ['HDFCBANK.NS', 'HDFC Bank', 'Financials', 13.69],
+  ['ICICIBANK.NS', 'ICICI Bank', 'Financials', 10.89],
+  ['RELIANCE.NS', 'Reliance Industries', 'Energy', 9.60],
+  ['BHARTIARTL.NS', 'Bharti Airtel', 'Communication Services', 6.48],
+  ['LT.NS', 'Larsen & Toubro', 'Industrials', 5.01],
+  ['SBIN.NS', 'State Bank of India', 'Financials', 4.65],
+  ['AXISBANK.NS', 'Axis Bank', 'Financials', 4.12],
+  ['INFY.NS', 'Infosys', 'Information Technology', 4.07],
+  ['M&M.NS', 'Mahindra & Mahindra', 'Consumer Discretionary', 3.03],
+  ['KOTAKBANK.NS', 'Kotak Mahindra Bank', 'Financials', 3.02],
+  ['BAJFINANCE.NS', 'Bajaj Finance', 'Financials', 2.97],
+  ['ITC.NS', 'ITC', 'Consumer Staples', 2.95],
+  ['TCS.NS', 'Tata Consultancy Services', 'Information Technology', 2.29],
+  ['ETERNAL.NS', 'Eternal', 'Consumer Discretionary', 2.27],
+  ['SUNPHARMA.NS', 'Sun Pharmaceutical', 'Health Care', 2.22],
+  ['HINDUNILVR.NS', 'Hindustan Unilever', 'Consumer Staples', 2.07],
+  ['TITAN.NS', 'Titan Company', 'Consumer Discretionary', 2.05],
+  ['MARUTI.NS', 'Maruti Suzuki', 'Consumer Discretionary', 1.96],
+  ['NTPC.NS', 'NTPC', 'Utilities', 1.77],
+  ['TATASTEEL.NS', 'Tata Steel', 'Materials', 1.71],
+  ['BEL.NS', 'Bharat Electronics', 'Industrials', 1.61],
+  ['ULTRACEMCO.NS', 'UltraTech Cement', 'Materials', 1.50],
+  ['ADANIPORTS.NS', 'Adani Ports', 'Industrials', 1.46],
+  ['POWERGRID.NS', 'Power Grid', 'Utilities', 1.39],
+  ['HCLTECH.NS', 'HCL Technologies', 'Information Technology', 1.34],
+  ['ASIANPAINT.NS', 'Asian Paints', 'Consumer Discretionary', 1.31],
+  ['INDIGO.NS', 'InterGlobe Aviation', 'Industrials', 1.30],
+  ['BAJAJFINSV.NS', 'Bajaj Finserv', 'Financials', 1.20],
+  ['TRENT.NS', 'Trent', 'Consumer Discretionary', 1.05],
+  ['TECHM.NS', 'Tech Mahindra', 'Information Technology', 1.00],
 ];
 
 export const NIFTY50 = [

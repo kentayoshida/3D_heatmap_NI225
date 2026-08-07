@@ -38,7 +38,7 @@ if (existsSync(QQQ_CSV)) {
 
 // India indices (cap-weighted, like Nasdaq): weight = published index %. Rows come
 // from us-constituents.mjs; an optional Ticker,Weight CSV (server/sensex_weights.csv
-// / server/nifty_weights.csv, Ticker matching the code e.g. 500180.BO / HDFCBANK.NS)
+// / server/nifty_weights.csv, Ticker matching the code e.g. HDFCBANK.NS / RELIANCE.NS)
 // overrides those weights with the latest official figures.
 const sensexConstituents = capConstituents(SENSEX, SENSEX_CSV);
 const niftyConstituents = capConstituents(NIFTY50, NIFTY_CSV);
