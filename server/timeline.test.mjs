@@ -59,10 +59,10 @@ test('us buildTimeline (dow): footprint = normalized price weight%, constant acr
 });
 
 test('us cap-weighted (sensex/nifty): weight footprint + level×weight%×change% 寄与度', () => {
-  const cfg = { constituents: [{ code: '500325.BO', name: 'Reliance', sector: 'Energy', weight: 9.6 }] };
+  const cfg = { constituents: [{ code: 'RELIANCE.NS', name: 'Reliance', sector: 'Energy', weight: 9.6 }] };
   const dates = [0, 1, 2, 3, 4, 5].map((i) => new Date(Date.UTC(2026, 6, 20 + i)));
   const closes = [1000, 1010, 1000, 1000, 1020, 1050]; // latest 1050, 1D base 1020 → +2.94%
-  const seriesByCode = new Map([['500325.BO', dates.map((t, i) => ({ t, c: closes[i] }))]]);
+  const seriesByCode = new Map([['RELIANCE.NS', dates.map((t, i) => ({ t, c: closes[i] }))]]);
   const indexSeries = dates.map((t, i) => ({ t, c: 80000 + i })); // ^BSESN level ≈ 80005
 
   // timeline footprint (weight%) == cap weight (like nasdaq), constant across frames

@@ -1,6 +1,6 @@
 {
   "_note": "International index params for us-worker.js. Dow = price-weighted (weight = live price). Nasdaq/Sensex/Nifty = cap-weighted (weight = index %).",
-  "asOfParams": "2026-08-06",
+  "asOfParams": "2026-08-07",
   "dow": {
     "divisor": 0.16268,
     "constituents": [
@@ -763,181 +763,181 @@
   "sensex": {
     "constituents": [
       {
-        "code": "500180.BO",
+        "code": "HDFCBANK.NS",
         "name": "HDFC Bank",
         "sector": "Financials",
         "weight": 13.69
       },
       {
-        "code": "532174.BO",
+        "code": "ICICIBANK.NS",
         "name": "ICICI Bank",
         "sector": "Financials",
         "weight": 10.89
       },
       {
-        "code": "500325.BO",
+        "code": "RELIANCE.NS",
         "name": "Reliance Industries",
         "sector": "Energy",
         "weight": 9.6
       },
       {
-        "code": "532454.BO",
+        "code": "BHARTIARTL.NS",
         "name": "Bharti Airtel",
         "sector": "Communication Services",
         "weight": 6.48
       },
       {
-        "code": "500510.BO",
+        "code": "LT.NS",
         "name": "Larsen & Toubro",
         "sector": "Industrials",
         "weight": 5.01
       },
       {
-        "code": "500112.BO",
+        "code": "SBIN.NS",
         "name": "State Bank of India",
         "sector": "Financials",
         "weight": 4.65
       },
       {
-        "code": "532215.BO",
+        "code": "AXISBANK.NS",
         "name": "Axis Bank",
         "sector": "Financials",
         "weight": 4.12
       },
       {
-        "code": "500209.BO",
+        "code": "INFY.NS",
         "name": "Infosys",
         "sector": "Information Technology",
         "weight": 4.07
       },
       {
-        "code": "500520.BO",
+        "code": "M&M.NS",
         "name": "Mahindra & Mahindra",
         "sector": "Consumer Discretionary",
         "weight": 3.03
       },
       {
-        "code": "500247.BO",
+        "code": "KOTAKBANK.NS",
         "name": "Kotak Mahindra Bank",
         "sector": "Financials",
         "weight": 3.02
       },
       {
-        "code": "500034.BO",
+        "code": "BAJFINANCE.NS",
         "name": "Bajaj Finance",
         "sector": "Financials",
         "weight": 2.97
       },
       {
-        "code": "500875.BO",
+        "code": "ITC.NS",
         "name": "ITC",
         "sector": "Consumer Staples",
         "weight": 2.95
       },
       {
-        "code": "532540.BO",
+        "code": "TCS.NS",
         "name": "Tata Consultancy Services",
         "sector": "Information Technology",
         "weight": 2.29
       },
       {
-        "code": "543320.BO",
+        "code": "ETERNAL.NS",
         "name": "Eternal",
         "sector": "Consumer Discretionary",
         "weight": 2.27
       },
       {
-        "code": "524715.BO",
+        "code": "SUNPHARMA.NS",
         "name": "Sun Pharmaceutical",
         "sector": "Health Care",
         "weight": 2.22
       },
       {
-        "code": "500696.BO",
+        "code": "HINDUNILVR.NS",
         "name": "Hindustan Unilever",
         "sector": "Consumer Staples",
         "weight": 2.07
       },
       {
-        "code": "500114.BO",
+        "code": "TITAN.NS",
         "name": "Titan Company",
         "sector": "Consumer Discretionary",
         "weight": 2.05
       },
       {
-        "code": "532500.BO",
+        "code": "MARUTI.NS",
         "name": "Maruti Suzuki",
         "sector": "Consumer Discretionary",
         "weight": 1.96
       },
       {
-        "code": "532555.BO",
+        "code": "NTPC.NS",
         "name": "NTPC",
         "sector": "Utilities",
         "weight": 1.77
       },
       {
-        "code": "500470.BO",
+        "code": "TATASTEEL.NS",
         "name": "Tata Steel",
         "sector": "Materials",
         "weight": 1.71
       },
       {
-        "code": "500049.BO",
+        "code": "BEL.NS",
         "name": "Bharat Electronics",
         "sector": "Industrials",
         "weight": 1.61
       },
       {
-        "code": "532538.BO",
+        "code": "ULTRACEMCO.NS",
         "name": "UltraTech Cement",
         "sector": "Materials",
         "weight": 1.5
       },
       {
-        "code": "532921.BO",
+        "code": "ADANIPORTS.NS",
         "name": "Adani Ports",
         "sector": "Industrials",
         "weight": 1.46
       },
       {
-        "code": "532898.BO",
+        "code": "POWERGRID.NS",
         "name": "Power Grid",
         "sector": "Utilities",
         "weight": 1.39
       },
       {
-        "code": "532281.BO",
+        "code": "HCLTECH.NS",
         "name": "HCL Technologies",
         "sector": "Information Technology",
         "weight": 1.34
       },
       {
-        "code": "500820.BO",
+        "code": "ASIANPAINT.NS",
         "name": "Asian Paints",
         "sector": "Consumer Discretionary",
         "weight": 1.31
       },
       {
-        "code": "539448.BO",
+        "code": "INDIGO.NS",
         "name": "InterGlobe Aviation",
         "sector": "Industrials",
         "weight": 1.3
       },
       {
-        "code": "532978.BO",
+        "code": "BAJAJFINSV.NS",
         "name": "Bajaj Finserv",
         "sector": "Financials",
         "weight": 1.2
       },
       {
-        "code": "500251.BO",
+        "code": "TRENT.NS",
         "name": "Trent",
         "sector": "Consumer Discretionary",
         "weight": 1.05
       },
       {
-        "code": "532755.BO",
+        "code": "TECHM.NS",
         "name": "Tech Mahindra",
         "sector": "Information Technology",
         "weight": 1
