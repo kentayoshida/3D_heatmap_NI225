@@ -8,7 +8,8 @@
       "code": "1332",
       "name": "ニッスイ",
       "sector": "水産・農林業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NISSUI"
     },
     {
       "code": "1333",
@@ -20,97 +21,113 @@
       "code": "1605",
       "name": "INPEX",
       "sector": "鉱業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "INPEX"
     },
     {
       "code": "1721",
       "name": "コムシスホールディングス",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "COMSYS HOLDINGS"
     },
     {
       "code": "1801",
       "name": "大成建設",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TAISEI"
     },
     {
       "code": "1802",
       "name": "大林組",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OBAYASHI"
     },
     {
       "code": "1803",
       "name": "清水建設",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SHIMIZU"
     },
     {
       "code": "1808",
       "name": "長谷工コーポレーション",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "HASEKO"
     },
     {
       "code": "1812",
       "name": "鹿島建設",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KAJIMA"
     },
     {
       "code": "1925",
       "name": "大和ハウス工業",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAIWA HOUSE IND."
     },
     {
       "code": "1928",
       "name": "積水ハウス",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SEKISUI HOUSE"
     },
     {
       "code": "1963",
       "name": "日揮ホールディングス",
       "sector": "建設業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JGC HOLDINGS"
     },
     {
       "code": "2002",
       "name": "日清製粉グループ本社",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NISSHIN SEIFUN GROUP"
     },
     {
       "code": "2269",
       "name": "明治ホールディングス",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MEIJI HOLDINGS"
     },
     {
       "code": "2282",
       "name": "日本ハム",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NH FOODS"
     },
     {
       "code": "2501",
       "name": "サッポロホールディングス",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SAPPORO BREWERIES"
     },
     {
       "code": "2502",
       "name": "アサヒグループホールディングス",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ASAHI GROUP HOLDINGS"
     },
     {
       "code": "2503",
       "name": "キリンホールディングス",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KIRIN HOLDINGS"
     },
     {
       "code": "2531",
@@ -122,25 +139,29 @@
       "code": "2801",
       "name": "キッコーマン",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KIKKOMAN"
     },
     {
       "code": "2802",
       "name": "味の素",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "AJINOMOTO"
     },
     {
       "code": "2871",
       "name": "ニチレイ",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NICHIREI"
     },
     {
       "code": "2914",
       "name": "日本たばこ産業",
       "sector": "食料品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JAPAN TOBACCO"
     },
     {
       "code": "3101",
@@ -152,19 +173,22 @@
       "code": "3401",
       "name": "帝人",
       "sector": "繊維製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TEIJIN"
     },
     {
       "code": "3402",
       "name": "東レ",
       "sector": "繊維製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TORAY INDUSTRIES"
     },
     {
       "code": "3861",
       "name": "王子ホールディングス",
       "sector": "パルプ・紙",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OJI HOLDINGS"
     },
     {
       "code": "3863",
@@ -176,181 +200,211 @@
       "code": "3405",
       "name": "クラレ",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KURARAY"
     },
     {
       "code": "3407",
       "name": "旭化成",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ASAHI KASEI"
     },
     {
       "code": "4004",
       "name": "レゾナック・ホールディングス",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RESONAC HOLDINGS"
     },
     {
       "code": "4005",
       "name": "住友化学",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO CHEMICAL"
     },
     {
       "code": "4021",
       "name": "日産化学",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NISSAN CHEMICAL"
     },
     {
       "code": "4042",
       "name": "東ソー",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOSOH"
     },
     {
       "code": "4043",
       "name": "トクヤマ",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKUYAMA"
     },
     {
       "code": "4061",
       "name": "デンカ",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DENKA"
     },
     {
       "code": "4063",
       "name": "信越化学工業",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SHIN-ETSU CHEMICAL"
     },
     {
       "code": "4183",
       "name": "三井化学",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUI CHEMICALS"
     },
     {
       "code": "4188",
       "name": "三菱ケミカルグループ",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI CHEMICAL GROUP"
     },
     {
       "code": "4208",
       "name": "UBE",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "UBE"
     },
     {
       "code": "4452",
       "name": "花王",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KAO"
     },
     {
       "code": "4901",
       "name": "富士フイルムホールディングス",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FUJIFILM HOLDINGS"
     },
     {
       "code": "4911",
       "name": "資生堂",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SHISEIDO"
     },
     {
       "code": "6988",
       "name": "日東電工",
       "sector": "化学",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NITTO DENKO"
     },
     {
       "code": "4151",
       "name": "協和キリン",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KYOWA KIRIN"
     },
     {
       "code": "4502",
       "name": "武田薬品工業",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TAKEDA PHARMACEUTICAL"
     },
     {
       "code": "4503",
       "name": "アステラス製薬",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ASTELLAS PHARMA"
     },
     {
       "code": "4506",
       "name": "住友ファーマ",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO PHARMA"
     },
     {
       "code": "4507",
       "name": "塩野義製薬",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SHIONOGI & CO."
     },
     {
       "code": "4519",
       "name": "中外製薬",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CHUGAI PHARMACEUTICAL"
     },
     {
       "code": "4523",
       "name": "エーザイ",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "EISAI"
     },
     {
       "code": "4568",
       "name": "第一三共",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAIICHI SANKYO"
     },
     {
       "code": "4578",
       "name": "大塚ホールディングス",
       "sector": "医薬品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OTSUKA HOLDINGS"
     },
     {
       "code": "5019",
       "name": "出光興産",
       "sector": "石油・石炭製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "IDEMITSU KOSAN"
     },
     {
       "code": "5020",
       "name": "ENEOSホールディングス",
       "sector": "石油・石炭製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ENEOS HOLDINGS"
     },
     {
       "code": "5101",
       "name": "横浜ゴム",
       "sector": "ゴム製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "THE YOKOHAMA RUBBER"
     },
     {
       "code": "5108",
       "name": "ブリヂストン",
       "sector": "ゴム製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "BRIDGESTONE"
     },
     {
       "code": "5201",
       "name": "AGC",
       "sector": "ガラス・土石製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "AGC"
     },
     {
       "code": "5202",
@@ -362,85 +416,99 @@
       "code": "5233",
       "name": "太平洋セメント",
       "sector": "ガラス・土石製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TAIHEIYO CEMENT"
     },
     {
       "code": "5332",
       "name": "TOTO",
       "sector": "ガラス・土石製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOTO"
     },
     {
       "code": "5333",
       "name": "日本碍子",
       "sector": "ガラス・土石製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NGK"
     },
     {
       "code": "5401",
       "name": "日本製鉄",
       "sector": "鉄鋼",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NIPPON STEEL"
     },
     {
       "code": "5406",
       "name": "神戸製鋼所",
       "sector": "鉄鋼",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KOBE STEEL"
     },
     {
       "code": "5411",
       "name": "JFEホールディングス",
       "sector": "鉄鋼",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JFE HOLDINGS"
     },
     {
       "code": "5706",
       "name": "三井金属鉱業",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUI KINZOKU"
     },
     {
       "code": "5711",
       "name": "三菱マテリアル",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI MATERIALS"
     },
     {
       "code": "5713",
       "name": "住友金属鉱山",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO METAL MINING"
     },
     {
       "code": "5714",
       "name": "DOWAホールディングス",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DOWA HOLDINGS"
     },
     {
       "code": "5801",
       "name": "古河電気工業",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FURUKAWA ELECTRIC"
     },
     {
       "code": "5802",
       "name": "住友電気工業",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO ELECTRIC IND."
     },
     {
       "code": "5803",
       "name": "フジクラ",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FUJIKURA"
     },
     {
       "code": "3436",
       "name": "SUMCO",
       "sector": "非鉄金属",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMCO"
     },
     {
       "code": "5901",
@@ -464,19 +532,22 @@
       "code": "5631",
       "name": "日本製鋼所",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "THE JAPAN STEEL WORKS"
     },
     {
       "code": "6103",
       "name": "オークマ",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OKUMA"
     },
     {
       "code": "6113",
       "name": "アマダ",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "AMADA"
     },
     {
       "code": "6141",
@@ -488,67 +559,78 @@
       "code": "6146",
       "name": "ディスコ",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DISCO"
     },
     {
       "code": "6273",
       "name": "SMC",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SMC"
     },
     {
       "code": "6301",
       "name": "コマツ",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KOMATSU"
     },
     {
       "code": "6302",
       "name": "住友重機械工業",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO HEAVY IND."
     },
     {
       "code": "6305",
       "name": "日立建機",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "HITACHI CONST. MACH."
     },
     {
       "code": "6326",
       "name": "クボタ",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KUBOTA"
     },
     {
       "code": "6361",
       "name": "荏原製作所",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "EBARA"
     },
     {
       "code": "6367",
       "name": "ダイキン工業",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAIKIN INDUSTRIES"
     },
     {
       "code": "6471",
       "name": "日本精工",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NSK"
     },
     {
       "code": "6472",
       "name": "NTN",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NTN"
     },
     {
       "code": "6473",
       "name": "ジェイテクト",
       "sector": "機械",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JTEKT"
     },
     {
       "code": "6383",
@@ -560,31 +642,36 @@
       "code": "6479",
       "name": "ミネベアミツミ",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MINEBEA MITSUMI"
     },
     {
       "code": "6501",
       "name": "日立製作所",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "HITACHI"
     },
     {
       "code": "6503",
       "name": "三菱電機",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI ELECTRIC"
     },
     {
       "code": "6504",
       "name": "富士電機",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FUJI ELECTRIC"
     },
     {
       "code": "6506",
       "name": "安川電機",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YASKAWA ELECTRIC"
     },
     {
       "code": "6594",
@@ -596,7 +683,8 @@
       "code": "6645",
       "name": "オムロン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OMRON"
     },
     {
       "code": "6674",
@@ -608,13 +696,15 @@
       "code": "6701",
       "name": "NEC",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NEC"
     },
     {
       "code": "6702",
       "name": "富士通",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FUJITSU"
     },
     {
       "code": "6703",
@@ -626,73 +716,85 @@
       "code": "6723",
       "name": "ルネサスエレクトロニクス",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RENESAS ELECTRONICS"
     },
     {
       "code": "6724",
       "name": "セイコーエプソン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SEIKO EPSON"
     },
     {
       "code": "6752",
       "name": "パナソニックホールディングス",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "PANASONIC HOLDINGS"
     },
     {
       "code": "6753",
       "name": "シャープ",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SHARP"
     },
     {
       "code": "6758",
       "name": "ソニーグループ",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SONY GROUP"
     },
     {
       "code": "6762",
       "name": "TDK",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TDK"
     },
     {
       "code": "6770",
       "name": "アルプスアルパイン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ALPS ALPINE"
     },
     {
       "code": "6841",
       "name": "横河電機",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YOKOGAWA ELECTRIC"
     },
     {
       "code": "6857",
       "name": "アドバンテスト",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ADVANTEST"
     },
     {
       "code": "6861",
       "name": "キーエンス",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KEYENCE"
     },
     {
       "code": "6902",
       "name": "デンソー",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DENSO"
     },
     {
       "code": "6920",
       "name": "レーザーテック",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "LASERTEC"
     },
     {
       "code": "6923",
@@ -710,67 +812,78 @@
       "code": "6954",
       "name": "ファナック",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FANUC"
     },
     {
       "code": "6963",
       "name": "ローム",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ROHM"
     },
     {
       "code": "6971",
       "name": "京セラ",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KYOCERA"
     },
     {
       "code": "6976",
       "name": "太陽誘電",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TAIYO YUDEN"
     },
     {
       "code": "6981",
       "name": "村田製作所",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MURATA MANUFACTURING"
     },
     {
       "code": "4062",
       "name": "イビデン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "IBIDEN"
     },
     {
       "code": "4902",
       "name": "コニカミノルタ",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KONICA MINOLTA"
     },
     {
       "code": "7735",
       "name": "SCREENホールディングス",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SCREEN HOLDINGS"
     },
     {
       "code": "7751",
       "name": "キヤノン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CANON"
     },
     {
       "code": "7752",
       "name": "リコー",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RICOH"
     },
     {
       "code": "8035",
       "name": "東京エレクトロン",
       "sector": "電気機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYO ELECTRON"
     },
     {
       "code": "7003",
@@ -782,37 +895,43 @@
       "code": "7011",
       "name": "三菱重工業",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI HEAVY IND."
     },
     {
       "code": "7012",
       "name": "川崎重工業",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KAWASAKI HEAVY IND."
     },
     {
       "code": "7013",
       "name": "IHI",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "IHI"
     },
     {
       "code": "7201",
       "name": "日産自動車",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NISSAN MOTOR"
     },
     {
       "code": "7202",
       "name": "いすゞ自動車",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ISUZU MOTORS"
     },
     {
       "code": "7203",
       "name": "トヨタ自動車",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOYOTA MOTOR"
     },
     {
       "code": "7205",
@@ -824,7 +943,8 @@
       "code": "7211",
       "name": "三菱自動車工業",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI MOTORS"
     },
     {
       "code": "7259",
@@ -836,55 +956,64 @@
       "code": "7261",
       "name": "マツダ",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MAZDA MOTOR"
     },
     {
       "code": "7267",
       "name": "本田技研工業",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "HONDA MOTOR"
     },
     {
       "code": "7269",
       "name": "スズキ",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUZUKI MOTOR"
     },
     {
       "code": "7270",
       "name": "SUBARU",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUBARU"
     },
     {
       "code": "7272",
       "name": "ヤマハ発動機",
       "sector": "輸送用機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YAMAHA MOTOR"
     },
     {
       "code": "4543",
       "name": "テルモ",
       "sector": "精密機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TERUMO"
     },
     {
       "code": "7731",
       "name": "ニコン",
       "sector": "精密機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NIKON"
     },
     {
       "code": "7733",
       "name": "オリンパス",
       "sector": "精密機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OLYMPUS"
     },
     {
       "code": "7741",
       "name": "HOYA",
       "sector": "精密機器",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "HOYA"
     },
     {
       "code": "7762",
@@ -896,19 +1025,22 @@
       "code": "7832",
       "name": "バンダイナムコホールディングス",
       "sector": "その他製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "BANDAI NAMCO HOLDINGS"
     },
     {
       "code": "7911",
       "name": "TOPPANホールディングス",
       "sector": "その他製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOPPAN HOLDINGS"
     },
     {
       "code": "7912",
       "name": "大日本印刷",
       "sector": "その他製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAI NIPPON PRINTING"
     },
     {
       "code": "7936",
@@ -920,115 +1052,134 @@
       "code": "7951",
       "name": "ヤマハ",
       "sector": "その他製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YAMAHA"
     },
     {
       "code": "7974",
       "name": "任天堂",
       "sector": "その他製品",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NINTENDO"
     },
     {
       "code": "2768",
       "name": "双日",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SOJITZ"
     },
     {
       "code": "8001",
       "name": "伊藤忠商事",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ITOCHU"
     },
     {
       "code": "8002",
       "name": "丸紅",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MARUBENI"
     },
     {
       "code": "8015",
       "name": "豊田通商",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOYOTA TSUSHO"
     },
     {
       "code": "8031",
       "name": "三井物産",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUI & CO."
     },
     {
       "code": "8053",
       "name": "住友商事",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO"
     },
     {
       "code": "8058",
       "name": "三菱商事",
       "sector": "卸売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI"
     },
     {
       "code": "3086",
       "name": "J.フロント リテイリング",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "J.FRONT RETAILING"
     },
     {
       "code": "3092",
       "name": "ZOZO",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ZOZO"
     },
     {
       "code": "3099",
       "name": "三越伊勢丹ホールディングス",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ISETAN MITSUKOSHI HOLDINGS"
     },
     {
       "code": "3382",
       "name": "セブン&アイ・ホールディングス",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SEVEN & I HOLDINGS"
     },
     {
       "code": "7453",
       "name": "良品計画",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RYOHIN KEIKAKU"
     },
     {
       "code": "8233",
       "name": "高島屋",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TAKASHIMAYA"
     },
     {
       "code": "8252",
       "name": "丸井グループ",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MARUI GROUP"
     },
     {
       "code": "8267",
       "name": "イオン",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "AEON"
     },
     {
       "code": "9843",
       "name": "ニトリホールディングス",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NITORI HOLDINGS"
     },
     {
       "code": "9983",
       "name": "ファーストリテイリング",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FAST RETAILING"
     },
     {
       "code": "2670",
@@ -1040,7 +1191,8 @@
       "code": "7532",
       "name": "パン・パシフィック・インターナショナルHD",
       "sector": "小売業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "PAN PACIFIC INTERNATIONAL HOLDINGS"
     },
     {
       "code": "7182",
@@ -1052,109 +1204,127 @@
       "code": "7186",
       "name": "コンコルディア・フィナンシャルグループ",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YOKOHAMA FINANCIAL GROUP"
     },
     {
       "code": "8304",
       "name": "あおぞら銀行",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "AOZORA BANK"
     },
     {
       "code": "8306",
       "name": "三菱UFJフィナンシャル・グループ",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI UFJ FINANCIAL GROUP"
     },
     {
       "code": "8308",
       "name": "りそなホールディングス",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RESONA HOLDINGS"
     },
     {
       "code": "8309",
       "name": "三井住友トラスト・ホールディングス",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO MITSUI TRUST GROUP"
     },
     {
       "code": "8316",
       "name": "三井住友フィナンシャルグループ",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO MITSUI FINANCIAL GROUP"
     },
     {
       "code": "8331",
       "name": "千葉銀行",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "THE CHIBA BANK"
     },
     {
       "code": "8354",
       "name": "ふくおかフィナンシャルグループ",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "FUKUOKA FINANCIAL GROUP"
     },
     {
       "code": "8411",
       "name": "みずほフィナンシャルグループ",
       "sector": "銀行業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MIZUHO FINANCIAL GROUP"
     },
     {
       "code": "8601",
       "name": "大和証券グループ本社",
       "sector": "証券業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAIWA SECURITIES GROUP"
     },
     {
       "code": "8604",
       "name": "野村ホールディングス",
       "sector": "証券業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NOMURA HOLDINGS"
     },
     {
       "code": "8630",
       "name": "SOMPOホールディングス",
       "sector": "保険業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SOMPO HOLDINGS"
     },
     {
       "code": "8725",
       "name": "MS&ADインシュアランスグループHD",
       "sector": "保険業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MS&AD INSURANCE GROUP HOLDINGS"
     },
     {
       "code": "8750",
       "name": "第一生命ホールディングス",
       "sector": "保険業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DAIICHI LIFE GROUP"
     },
     {
       "code": "8766",
       "name": "東京海上ホールディングス",
       "sector": "保険業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKIO MARINE HOLDINGS"
     },
     {
       "code": "8795",
       "name": "T&Dホールディングス",
       "sector": "保険業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "T&D HOLDINGS"
     },
     {
       "code": "8253",
       "name": "クレディセゾン",
       "sector": "その他金融業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CREDIT SAISON"
     },
     {
       "code": "8591",
       "name": "オリックス",
       "sector": "その他金融業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ORIX"
     },
     {
       "code": "8593",
@@ -1166,127 +1336,148 @@
       "code": "8697",
       "name": "日本取引所グループ",
       "sector": "その他金融業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JAPAN EXCHANGE GROUP"
     },
     {
       "code": "3289",
       "name": "東急不動産ホールディングス",
       "sector": "不動産業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYU FUDOSAN HOLDINGS"
     },
     {
       "code": "8801",
       "name": "三井不動産",
       "sector": "不動産業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUI FUDOSAN"
     },
     {
       "code": "8802",
       "name": "三菱地所",
       "sector": "不動産業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUBISHI ESTATE"
     },
     {
       "code": "8804",
       "name": "東京建物",
       "sector": "不動産業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYO TATEMONO"
     },
     {
       "code": "8830",
       "name": "住友不動産",
       "sector": "不動産業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SUMITOMO REALTY & DEVELOPMENT"
     },
     {
       "code": "9001",
       "name": "東武鉄道",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOBU RAILWAY"
     },
     {
       "code": "9005",
       "name": "東急",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYU"
     },
     {
       "code": "9007",
       "name": "小田急電鉄",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ODAKYU ELECTRIC RAILWAY"
     },
     {
       "code": "9008",
       "name": "京王電鉄",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KEIO"
     },
     {
       "code": "9009",
       "name": "京成電鉄",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KEISEI ELECTRIC RAILWAY"
     },
     {
       "code": "9020",
       "name": "東日本旅客鉄道",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "EAST JAPAN RAILWAY"
     },
     {
       "code": "9021",
       "name": "西日本旅客鉄道",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "WEST JAPAN RAILWAY"
     },
     {
       "code": "9022",
       "name": "東海旅客鉄道",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CENTRAL JAPAN RAILWAY"
     },
     {
       "code": "9064",
       "name": "ヤマトホールディングス",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "YAMATO HOLDINGS"
     },
     {
       "code": "9147",
       "name": "NIPPON EXPRESSホールディングス",
       "sector": "陸運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NIPPON EXPRESS HOLDINGS"
     },
     {
       "code": "9101",
       "name": "日本郵船",
       "sector": "海運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NIPPON YUSEN"
     },
     {
       "code": "9104",
       "name": "商船三井",
       "sector": "海運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MITSUI O.S.K.LINES"
     },
     {
       "code": "9107",
       "name": "川崎汽船",
       "sector": "海運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KAWASAKI KISEN KAISHA"
     },
     {
       "code": "9201",
       "name": "日本航空",
       "sector": "空運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JAPAN AIRLINES"
     },
     {
       "code": "9202",
       "name": "ANAホールディングス",
       "sector": "空運業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ANA HOLDINGS"
     },
     {
       "code": "9301",
@@ -1298,79 +1489,92 @@
       "code": "2432",
       "name": "ディー・エヌ・エー",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DENA"
     },
     {
       "code": "3659",
       "name": "ネクソン",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NEXON"
     },
     {
       "code": "4307",
       "name": "野村総合研究所",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NOMURA RESEARCH INSTITUTE"
     },
     {
       "code": "4324",
       "name": "電通グループ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "DENTSU GROUP"
     },
     {
       "code": "4385",
       "name": "メルカリ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "MERCARI"
     },
     {
       "code": "4689",
       "name": "LINEヤフー",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "LY"
     },
     {
       "code": "4704",
       "name": "トレンドマイクロ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TREND MICRO"
     },
     {
       "code": "4751",
       "name": "サイバーエージェント",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CYBERAGENT"
     },
     {
       "code": "4755",
       "name": "楽天グループ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RAKUTEN GROUP"
     },
     {
       "code": "6098",
       "name": "リクルートホールディングス",
       "sector": "サービス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "RECRUIT HOLDINGS"
     },
     {
       "code": "9432",
       "name": "日本電信電話",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "NTT"
     },
     {
       "code": "9433",
       "name": "KDDI",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KDDI"
     },
     {
       "code": "9434",
       "name": "ソフトバンク",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SOFTBANK"
     },
     {
       "code": "9613",
@@ -1382,13 +1586,15 @@
       "code": "9984",
       "name": "ソフトバンクグループ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SOFTBANK GROUP"
     },
     {
       "code": "9766",
       "name": "コナミグループ",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "KONAMI GROUP"
     },
     {
       "code": "9697",
@@ -1400,49 +1606,57 @@
       "code": "9602",
       "name": "東宝",
       "sector": "情報・通信業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOHO"
     },
     {
       "code": "9501",
       "name": "東京電力ホールディングス",
       "sector": "電気・ガス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYO ELECTRIC POWER COMPANY HOLDINGS"
     },
     {
       "code": "9502",
       "name": "中部電力",
       "sector": "電気・ガス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "CHUBU ELECTRIC POWER"
     },
     {
       "code": "9503",
       "name": "関西電力",
       "sector": "電気・ガス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "THE KANSAI ELECTRIC POWER"
     },
     {
       "code": "9531",
       "name": "東京ガス",
       "sector": "電気・ガス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "TOKYO GAS"
     },
     {
       "code": "9532",
       "name": "大阪ガス",
       "sector": "電気・ガス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "OSAKA GAS"
     },
     {
       "code": "2413",
       "name": "エムスリー",
       "sector": "サービス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "M3"
     },
     {
       "code": "4661",
       "name": "オリエンタルランド",
       "sector": "サービス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "ORIENTAL LAND"
     },
     {
       "code": "4676",
@@ -1454,7 +1668,8 @@
       "code": "6178",
       "name": "日本郵政",
       "sector": "サービス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "JAPAN POST HOLDINGS"
     },
     {
       "code": "9435",
@@ -1466,7 +1681,8 @@
       "code": "9735",
       "name": "セコム",
       "sector": "サービス業",
-      "paf": 1
+      "paf": 1,
+      "nameEn": "SECOM"
     },
     {
       "code": "9744",
