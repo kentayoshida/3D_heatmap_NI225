@@ -2,7 +2,7 @@
 //
 // Holds the J-Quants V2 API key, fetches daily price bars per period, computes
 // weight% + 寄与度 from index params, and returns the JSON the frontend expects:
-//   { "1D": { asOf, constituents:[{code,name,sector,changePct,weight,contribution}] }, ... }
+//   { "1D": { asOf, constituents:[{code,name,nameEn,sector,changePct,weight,contribution}] }, ... }
 // Encoding: area ∝ weight (price weight = paf×close / Σ), height ∝ changePct, so a
 // bar's volume (area × height) ≈ contribution (the name's index-point impact).
 //
@@ -115,7 +115,7 @@ function shapeTimeline(days, latestMap) {
       const c4 = code4(c.code);
       const close = cur.get(c4), base = prev.get(c4);
       const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
-      return { code: c.code, name: c.name, sector: c.sector, changePct: round2(changePct), weight: round2(wmap.get(c.code) ?? 0) };
+      return { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: round2(changePct), weight: round2(wmap.get(c.code) ?? 0) };
     });
     frames.push({ asOf: fmtDash(days[i].date), constituents });
   }
@@ -152,11 +152,11 @@ function shapePeriod(latestMap, baseMap, asOfDate) {
     const close = latestMap.get(c4);
     const base = baseMap.get(c4);
     if (close == null || base == null || !base) {
-      return { code: c.code, name: c.name, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
+      return { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
     }
     const diff = close - base;
     return {
-      code: c.code, name: c.name, sector: c.sector,
+      code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector,
       changePct: round2((diff / base) * 100),
       weight: w,
       contribution: round2(((c.paf ?? 1) * diff) / divisor),

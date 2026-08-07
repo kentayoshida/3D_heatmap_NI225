@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONSTITUENTS } from './constituents.mjs';
+import { NAME_EN } from './nikkei-names-en.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSV_PATH = resolve(__dirname, 'nikkei_225_price_adjustment_factor_jp.csv');
@@ -32,11 +33,17 @@ if (existsSync(CSV_PATH)) {
   const rows = parsePafCsv(readFileSync(CSV_PATH));
   constituents = rows.map(({ code, name, sector, paf }) => {
     const m = META.get(code) || {};
-    return { code, name: name || m.name || code, sector: sector || m.sector || '未分類', paf };
+    return withNameEn({ code, name: name || m.name || code, sector: sector || m.sector || '未分類', paf });
   });
 } else {
   source = 'constituents.mjs (candidate superset — provide the official CSV to pin exactly 225)';
-  constituents = CONSTITUENTS.map(([code, name, sector]) => ({ code, name, sector, paf: 1 }));
+  constituents = CONSTITUENTS.map(([code, name, sector]) => withNameEn({ code, name, sector, paf: 1 }));
+}
+
+// Attach the official English company name (for the EN view) when we have one.
+function withNameEn(c) {
+  const en = NAME_EN[c.code] || NAME_EN[String(c.code).slice(0, 4)];
+  return en ? { ...c, nameEn: en } : c;
 }
 
 const params = {
