@@ -21,6 +21,15 @@ const FILL_MIN = 0.07;          // fill opacity at the top of the glass range
 const XRAY_AT = 0.85;           // slider fraction at/above which X-ray (outline) mode kicks in
 const XRAY_FACE_OPACITY = 0.045; // faint faces kept in X-ray so silhouettes/hover remain
 
+// ---- adaptive (level-of-detail) stock labels --------------------------------
+// Names are baked for a broad set of bars, but only shown when they'd be legible:
+// a bar's label appears once its footprint spans a minimum fraction of the
+// viewport height (so zooming in reveals smaller-area names, zooming out declutters).
+const LABEL_MIN_SIDE = 0.9;     // build a name only for bars at least this wide & deep
+const LABEL_MAX = 240;          // hard cap on baked stock-name sprites (perf)
+const LABEL_TOP_ALWAYS = 14;    // the biggest names stay labeled at any zoom
+const LABEL_REVEAL_FRAC = 0.035; // show a name once its bar spans ≥ this share of viewport height
+
 const lerp = (a, b, k) => a + (b - a) * k;
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
@@ -44,6 +53,8 @@ export class Heatmap {
     this.invert = false;   // flip vertical direction (plus down / minus up)
     this._constituents = null;
     this._layout = null;   // last { stocks, sectors, cap } for label rebuilds
+    this._stockLabels = [];               // [{ sp, size, area }] for zoom-adaptive LOD
+    this._labelTarget = new THREE.Vector3(0, -2, 0); // orbit center (for camera distance)
     this.highlighted = null;
     // language-aware display resolvers (overridden by main.js)
     this.nameFor = (c) => c.name || c.code;
@@ -239,22 +250,43 @@ export class Heatmap {
       this.labelGroup.add(sp);
     }
 
-    // stock labels — the largest bars only, ranked by footprint area
+    // stock labels — baked for a broad set (biggest first) and toggled by zoom in
+    // updateLabels(): the biggest names always show; smaller-area names appear as
+    // the camera closes in, so more constituents are labeled by default and tiny
+    // bars still get names once you zoom in.
+    this._stockLabels = [];
     const ranked = stocks
-      .filter((s) => s.w >= 4.6 && s.d >= 2.8)
+      .filter((s) => s.w >= LABEL_MIN_SIDE && s.d >= LABEL_MIN_SIDE)
       .sort((a, b) => b.w * b.d - a.w * a.d)
-      .slice(0, 34);
-    for (const s of ranked) {
+      .slice(0, LABEL_MAX);
+    ranked.forEach((s, i) => {
       const sign = this._sign(s.changePct);
       const height = this._height(s.changePct, cap);
       const topY = Math.max(0, sign * height);
       const pctTxt = (s.changePct >= 0 ? '+' : '') + s.changePct.toFixed(2) + '%';
       const sp = this._textSprite({ title: this.nameFor(s), sub: pctTxt, color: '#ffffff', subColor: '#e4ebf7', fontSize: 30 });
-      const worldW = Math.min(Math.max(s.w * 0.78, 4), 16);
+      const worldW = Math.min(Math.max(s.w * 0.8, 2.6), 15);
       sp.scale.set(worldW, worldW / sp.userData.aspect, 1);
       sp.position.set(s.x, topY + (worldW / sp.userData.aspect) / 2 + 0.3, s.z);
       sp.renderOrder = 4;
+      sp.visible = i < 52;           // sensible default before the first LOD pass
       this.labelGroup.add(sp);
+      this._stockLabels.push({ sp, size: Math.sqrt(s.w * s.d) });
+    });
+  }
+
+  /** Show/hide baked stock names by zoom: a name appears once its bar spans at
+   *  least LABEL_REVEAL_FRAC of the viewport height (with the biggest always on).
+   *  Call once per frame with the active camera. */
+  updateLabels(camera) {
+    const list = this._stockLabels;
+    if (!list || !list.length || !camera) return;
+    const dist = camera.position.distanceTo(this._labelTarget);
+    const k = 2 * Math.tan((camera.fov * Math.PI / 180) / 2); // world height that fills the viewport at unit distance
+    const denom = Math.max(dist * k, 1e-3);
+    for (let i = 0; i < list.length; i++) {
+      const L = list[i];
+      L.sp.visible = i < LABEL_TOP_ALWAYS || (L.size / denom) >= LABEL_REVEAL_FRAC;
     }
   }
 
