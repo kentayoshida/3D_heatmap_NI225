@@ -1,29 +1,30 @@
 // Serverless proxy (Cloudflare Worker style; adaptable to Vercel/Lambda).
 //
-// Holds the J-Quants V2 API key, fetches each constituent's daily *adjusted* price
-// series once, and returns the JSON the frontend expects:
+// Holds the J-Quants V2 API key, fetches daily price bars per period, computes
+// weight% + 寄与度 from index params, and returns the JSON the frontend expects:
 //   { "1D": { asOf, constituents:[{code,name,nameEn,sector,changePct,weight,contribution}] }, ... }
 // Encoding: area ∝ weight (price weight = paf×close / Σ), height ∝ changePct, so a
 // bar's volume (area × height) ≈ contribution (the name's index-point impact).
 //
-// Why per-constituent series (not per-date market snapshots): J-Quants' adjustment
-// close is only guaranteed self-consistent WITHIN one code's requested range. Two
-// independently-fetched date snapshots can straddle a corporate-action ex-date and
-// land on different adjustment bases — which produced a spurious −33.95% "1D" for
-// ANA (9202) when its prev-day snapshot stayed on the old basis. Fetching one
-// continuous adjusted series per name (like the US worker) makes latest vs. base
-// share a single basis, so splits/consolidations never leak into the % change.
+// Fetch strategy (free-plan friendly): one market snapshot per needed date
+// (bars/daily?date=YYYYMMDD returns every stock), memoized so each date is fetched
+// once. ~14 dates × pagination stays under Cloudflare's free-plan 50-subrequest
+// cap. (Fetching one 1y series per constituent — ~225 subrequests — would need the
+// Workers Paid plan; this design deliberately avoids that.)
+//
+// Split / adjustment safety WITHOUT a continuous series: each snapshot carries both
+// the adjusted close (AdjC) and the raw close (Close). Two independently-fetched
+// date snapshots can straddle a corporate-action ex-date and disagree — a genuine
+// split moves the RAW close, while a stale adjustment close moves the ADJUSTED one
+// (this produced ANA's spurious 1D −33.95%). reconcileChange() compares both: on
+// normal days they agree (trust adjusted); when they diverge, the true economic
+// move is the smaller-magnitude one, so splits and adjustment glitches both cancel.
 //
 // J-Quants V2 (https://jpx-jquants.com) uses API-KEY auth (x-api-key header; no
 // token exchange, no expiry) and is END-OF-DAY (daily) data, not intraday. So
 // "1D" = latest close vs the previous close; longer periods compare the latest
 // close with the close at the start of the period. Data freshness depends on your
 // J-Quants plan.
-//
-// Subrequests: one range fetch per constituent (~225), issued with bounded
-// concurrency. That is above Cloudflare's free-plan 50-subrequest cap, so this
-// worker expects the Workers Paid (Bundled) plan (1000/req). Results are cached
-// for 10 minutes, so only a cold refresh pays the full fetch cost.
 //
 // Secret (wrangler secret put JQUANTS_API_KEY): the V2 API key from the dashboard
 //   https://jpx-jquants.com/dashboard/api-keys
@@ -36,9 +37,10 @@ import PARAMS from './index-params.json' with { type: 'json' }; // bundled by Wr
 const JQ = 'https://api.jquants.com/v2';
 const BARS = `${JQ}/equities/bars/daily`;
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y'];
-const PAYLOAD_TTL = 600;      // seconds; EOD data changes at most daily
-const RANGE_DAYS = 420;       // ~1y + buffer so the 1Y/YTD base is always covered
-const FETCH_CONCURRENCY = 12; // parallel per-code range fetches
+const PAYLOAD_TTL = 600; // seconds; EOD data changes at most daily
+// When adjusted vs raw % change disagree by more than this many percentage points,
+// a split or an adjustment-close glitch is in play → reconcile (see reconcileChange).
+const DIVERGE_TOL = 5;
 
 let _payload = { data: null, exp: 0 };
 
@@ -85,173 +87,164 @@ async function buildAllPeriods(env) {
   const key = env.JQUANTS_API_KEY;
   if (!key) throw new Error('Set JQUANTS_API_KEY (V2 API key from the J-Quants dashboard).');
   const todayJst = new Date(Date.now() + 9 * 3600 * 1000); // JST calendar date via UTC getters
-  const from = fmt(addDays(todayJst, -RANGE_DAYS));
-  const to = fmt(todayJst);
+  const cache = new Map(); // dateStr -> Map<code4,{a,r}> so each date is fetched once
 
-  const codes = PARAMS.constituents.map((c) => c.code);
-  const seriesByCode = await fetchAllSeries(codes, from, to, key);
+  const latest = await quotesOnOrBefore(todayJst, key, cache);
+  if (!latest.map.size) throw new Error('No J-Quants quotes returned (check API key / plan freshness).');
 
-  const ok = codes.filter((c) => seriesByCode.get(c)?.length).length;
-  if (!ok) throw new Error('No J-Quants series returned (check API key / plan freshness).');
-  if (ok < Math.ceil(codes.length * 0.5)) {
-    throw new Error(`J-Quants returned too few series (${ok}/${codes.length}) — rate limited?`);
-  }
-
-  const out = shapeAllPeriods(seriesByCode);
-  out.TIMELINE = buildTimeline(seriesByCode);
-  return out;
-}
-
-// ---- weight% + 寄与度 math --------------------------------------------------
-// Price weight (area): each name's share of the price-weighted index =
-// paf × close / Σ(paf × close), as a percent. A snapshot from the latest closes,
-// so it is period-independent (the treemap footprint holds still across 1D…1Y).
-// Exported for unit tests.
-function weightSnapshot(seriesByCode) {
-  let total = 0;
-  for (const c of PARAMS.constituents) {
-    const s = seriesByCode.get(c.code);
-    if (s?.length) total += (c.paf ?? 1) * lastClose(s);
-  }
-  const map = new Map();
-  for (const c of PARAMS.constituents) {
-    const s = seriesByCode.get(c.code);
-    map.set(c.code, (s?.length && total > 0) ? (((c.paf ?? 1) * lastClose(s)) / total) * 100 : 0);
-  }
-  return map;
-}
-
-// Pure: build all 7 periods from the fetched per-code series. Exported for tests.
-function shapeAllPeriods(seriesByCode) {
-  // latest trading date = the most recent timestamp across all series.
-  let latest = null;
-  for (const s of seriesByCode.values()) {
-    if (s && s.length) { const t = s[s.length - 1].t; if (!latest || t > latest) latest = t; }
-  }
-  if (!latest) throw new Error('no dated closes');
-
-  const weightByCode = weightSnapshot(seriesByCode); // shared footprint (area) for every period
-  const baseDates = periodBaseDates(latest);
+  const baseDates = periodBaseDates(latest.date);
   const out = {};
   for (const p of PERIODS) {
-    out[p] = shapePeriod(seriesByCode, { p, baseDate: baseDates[p], latest, weightByCode });
+    const base = await quotesOnOrBefore(baseDates[p], key, cache);
+    out[p] = shapePeriod(latest.map, base.map, latest.date);
   }
+  out.TIMELINE = await buildTimeline(latest, key, cache);
   return out;
-}
-
-// close/base come from the SAME adjusted series, so split adjustment can't leak in.
-// contribution over the period ≈ PAF × (close − base) / current-divisor (index
-// points) ≈ the bar's volume (area × height). Exported for unit tests.
-function shapePeriod(seriesByCode, { p, baseDate, latest, weightByCode }) {
-  const divisor = PARAMS.divisor;
-  const constituents = PARAMS.constituents.map((c) => {
-    const w = round2(weightByCode?.get(c.code) ?? 0);
-    const s = seriesByCode.get(c.code);
-    const zero = { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
-    if (!s || !s.length) return zero;
-    const close = lastClose(s);
-    const base = p === '1D' ? prevClose(s) : closeOnOrBefore(s, baseDate);
-    if (close == null || base == null || !base) return zero;
-    const diff = close - base;
-    return {
-      code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector,
-      changePct: round2((diff / base) * 100),
-      weight: w,
-      contribution: round2(((c.paf ?? 1) * diff) / divisor),
-    };
-  });
-  // asOf = the latest trading date the data reflects (JST), not the fetch time.
-  return { asOf: fmtDash(latest), constituents };
 }
 
 // ---- timeline: last N trading days (daily change) with a FIXED footprint -----
-// The area (weight%) is pinned to each name's fixed price-weight (paf × latest
-// close, normalized) so the treemap holds still while height/color (that day's
-// change%) animate. Pure over the already-fetched series. Exported for unit tests.
+// Walks back from the latest trading date collecting N+1 daily snapshots, then
+// shapes N frames whose area (weight%) is pinned to each name's fixed footprint
+// (paf × latest close, normalized) so the treemap holds still while height/color
+// (that day's change%) animate. Reuses the memoized daily-bars fetch.
 const TIMELINE_DAYS = 5;
-function longestSeries(seriesByCode) {
-  let best = null;
-  for (const s of seriesByCode.values()) if (s && (!best || s.length > best.length)) best = s;
-  return best;
+async function buildTimeline(latest, key, cache, n = TIMELINE_DAYS) {
+  const days = [latest];
+  let cursor = addDays(latest.date, -1);
+  for (let guard = 0; days.length < n + 1 && guard < 20; guard++) {
+    const q = await quotesOnOrBefore(cursor, key, cache);
+    if (!q.map.size) break;
+    days.push(q);
+    cursor = addDays(q.date, -1);
+  }
+  days.reverse(); // ascending (oldest → newest); newest === latest
+  return shapeTimeline(days, latest.map);
 }
-function buildTimeline(seriesByCode, n = TIMELINE_DAYS) {
-  const ref = longestSeries(seriesByCode);
-  if (!ref || ref.length < 2) return { frames: [] };
-  const weightByCode = weightSnapshot(seriesByCode); // FIXED footprint → stable layout
-  const dates = ref.slice(-(n + 1)).map((p) => p.t);  // ascending, up to n+1 sessions
+
+// Pure: N+1 ascending { date, map } snapshots + the latest-close map → N frames.
+// Exported for unit tests.
+function shapeTimeline(days, latestMap) {
+  if (!days || days.length < 2) return { frames: [] };
+  const wmap = weightMapFromLatest(latestMap); // FIXED footprint → weight% (area)
   const frames = [];
-  for (let i = 1; i < dates.length; i++) {
-    const d = dates[i], prev = dates[i - 1];
+  for (let i = 1; i < days.length; i++) {
+    const cur = days[i].map, prev = days[i - 1].map;
     const constituents = PARAMS.constituents.map((c) => {
-      const s = seriesByCode.get(c.code);
-      const weight = round2(weightByCode.get(c.code) ?? 0);
-      const close = s && s.length ? closeOnOrBefore(s, d) : null;
-      const base = s && s.length ? closeOnOrBefore(s, prev) : null;
-      const changePct = (close != null && base) ? ((close - base) / base) * 100 : 0;
-      return { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: round2(changePct), weight };
+      const c4 = code4(c.code);
+      const rec = reconcileChange(cur.get(c4), prev.get(c4));
+      return { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: round2(rec ? rec.pct : 0), weight: round2(wmap.get(c.code) ?? 0) };
     });
-    frames.push({ asOf: fmtDash(d), constituents });
+    frames.push({ asOf: fmtDash(days[i].date), constituents });
   }
   return { frames };
 }
 
-// ---- J-Quants V2: one code's adjusted daily series over [from,to] ------------
-// Returns a sorted-ascending array of { t: Date, c: adjClose }, or null on error.
-// One code's range is internally adjustment-consistent (the whole point of the
-// per-code refactor). Uses AdjC (adjustment close) when present.
-async function fetchSeries(code, from, to, key) {
-  const out = [];
-  let pkey = null;
-  do {
-    const url = `${BARS}?code=${encodeURIComponent(code)}&from=${from}&to=${to}`
-      + (pkey ? `&pagination_key=${encodeURIComponent(pkey)}` : '');
-    const r = await fetch(url, { headers: { 'x-api-key': key, accept: 'application/json' } });
-    if (!r.ok) return out.length ? finishSeries(out) : null;
-    const j = await r.json();
-    for (const q of firstArray(j)) {
-      const t = pickDate(q);
-      const price = pickPrice(q);
-      if (t && price != null) out.push({ t, c: price });
-    }
-    pkey = j.pagination_key || j.paginationKey || null;
-  } while (pkey);
-  return finishSeries(out);
-}
-function finishSeries(out) {
-  out.sort((a, b) => a.t - b.t);
-  return out;
-}
-
-// Fetch every constituent's series with bounded concurrency. Missing/failed codes
-// map to null (rendered as 0% change / 0 weight). Exported piece: none (I/O).
-async function fetchAllSeries(codes, from, to, key) {
-  const map = new Map();
-  let i = 0;
-  async function worker() {
-    while (i < codes.length) {
-      const code = codes[i++];
-      try { map.set(code, await fetchSeries(code, from, to, key)); }
-      catch { map.set(code, null); }
-    }
+// ---- weight% + 寄与度 math --------------------------------------------------
+// Price weight (area): each name's share of the price-weighted index =
+// paf × close / Σ(paf × close), as a percent. A snapshot from the latest closes
+// (adjusted, or raw if adjusted is absent), so it is period-independent (the
+// treemap footprint holds still across 1D…1Y). Exported for unit tests.
+function weightMapFromLatest(latestMap) {
+  const px = (v) => (v ? (v.a ?? v.r) : null);
+  let total = 0;
+  for (const c of PARAMS.constituents) {
+    const v = px(latestMap.get(code4(c.code)));
+    if (v != null) total += (c.paf ?? 1) * v;
   }
-  const n = Math.min(FETCH_CONCURRENCY, codes.length);
-  await Promise.all(Array.from({ length: n }, worker));
+  const map = new Map();
+  for (const c of PARAMS.constituents) {
+    const v = px(latestMap.get(code4(c.code)));
+    map.set(c.code, (v != null && total > 0) ? (((c.paf ?? 1) * v) / total) * 100 : 0);
+  }
   return map;
 }
 
-// V2 field names are abbreviated (AdjC = adjustment close); be tolerant.
-function pickPrice(q) {
-  for (const k of ['AdjC', 'AdjustmentClose', 'Cl', 'Close', 'close', 'adjustmentClose']) {
-    if (q[k] != null) return Number(q[k]);
+// (cur - base)/base as a percent + the raw diff, or null when either side missing.
+function ratioOf(cur, base) {
+  return (cur != null && base != null && base !== 0) ? { pct: ((cur - base) / base) * 100, diff: cur - base } : null;
+}
+// Reconcile adjusted (AdjC) vs raw (Close) % change so neither a split nor a stale
+// adjustment close leaks into the number. Normal days: both agree → trust adjusted.
+// When they diverge past DIVERGE_TOL, the real economic move is the smaller-
+// magnitude one — a split inflates only the raw move; an adjustment glitch inflates
+// only the adjusted move. Returns { pct, diff } for the chosen basis, or null.
+// Exported for unit tests. (This is what fixes ANA's spurious 1D −33.95%.)
+function reconcileChange(cur, base) {
+  if (!cur || !base) return null;
+  const adj = ratioOf(cur.a, base.a);
+  const raw = ratioOf(cur.r, base.r);
+  if (!adj && !raw) return null;
+  if (!adj) return raw;
+  if (!raw) return adj;
+  if (Math.abs(adj.pct - raw.pct) <= DIVERGE_TOL) return adj;
+  return Math.abs(adj.pct) <= Math.abs(raw.pct) ? adj : raw;
+}
+
+// contribution over the period ≈ PAF × (close − base) / current-divisor (index
+// points) ≈ the bar's volume (area × height), using the reconciled diff/basis.
+function shapePeriod(latestMap, baseMap, asOfDate) {
+  const divisor = PARAMS.divisor;
+  const wmap = weightMapFromLatest(latestMap);
+  const constituents = PARAMS.constituents.map((c) => {
+    const c4 = code4(c.code);
+    const w = round2(wmap.get(c.code) ?? 0);
+    const rec = reconcileChange(latestMap.get(c4), baseMap.get(c4));
+    if (!rec) {
+      return { code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector, changePct: 0, weight: w, contribution: 0 };
+    }
+    return {
+      code: c.code, name: c.name, nameEn: c.nameEn, sector: c.sector,
+      changePct: round2(rec.pct),
+      weight: w,
+      contribution: round2(((c.paf ?? 1) * rec.diff) / divisor),
+    };
+  });
+  // asOf = the latest trading date the data reflects (JST), not the fetch time.
+  return { asOf: asOfDate ? fmtDash(asOfDate) : new Date().toISOString().slice(0, 10), constituents };
+}
+
+// ---- J-Quants V2: daily bars for a date (all stocks) → Map<code4,{a,r}> ------
+// a = adjusted close (AdjC), r = raw close (Close). Both kept so reconcileChange
+// can compare them. Missing fields are null.
+async function quotesForDate(dateStr, key) {
+  const map = new Map();
+  let pkey = null;
+  do {
+    const url = `${BARS}?date=${dateStr}` + (pkey ? `&pagination_key=${encodeURIComponent(pkey)}` : '');
+    const r = await fetch(url, { headers: { 'x-api-key': key, accept: 'application/json' } });
+    if (!r.ok) throw new Error(`equities/bars/daily ${r.status}`);
+    const j = await r.json();
+    for (const q of firstArray(j)) {
+      const code = q.Code ?? q.code;
+      if (code == null) continue;
+      const a = pickAdj(q), raw = pickRaw(q);
+      if (a != null || raw != null) map.set(code4(code), { a, r: raw });
+    }
+    pkey = j.pagination_key || j.paginationKey || null;
+  } while (pkey);
+  return map;
+}
+
+// Nearest trading day on/before target (steps back up to 7 days for holidays).
+// Memoized by date string so a date shared across periods is fetched once.
+async function quotesOnOrBefore(target, key, cache) {
+  for (let i = 0; i < 8; i++) {
+    const d = addDays(target, -i);
+    const ds = fmt(d);
+    let map = cache && cache.get(ds);
+    if (!map) { map = await quotesForDate(ds, key); if (cache) cache.set(ds, map); }
+    if (map.size) return { date: d, map };
   }
+  return { date: target, map: new Map() };
+}
+
+// V2 field names are abbreviated (AdjC = adjustment close); be tolerant.
+function pickAdj(q) {
+  for (const k of ['AdjC', 'AdjustmentClose', 'adjustmentClose']) if (q[k] != null) return Number(q[k]);
   return null;
 }
-// Row date (YYYY-MM-DD). Parsed as UTC midnight so comparisons with the UTC-based
-// period base dates line up.
-function pickDate(q) {
-  for (const k of ['Date', 'date', 'Dt', 'TradeDate', 'tradeDate']) {
-    if (q[k]) { const d = new Date(q[k]); if (!Number.isNaN(d.getTime())) return d; }
-  }
+function pickRaw(q) {
+  for (const k of ['Cl', 'Close', 'close']) if (q[k] != null) return Number(q[k]);
   return null;
 }
 function firstArray(j) {
@@ -259,15 +252,6 @@ function firstArray(j) {
   for (const k of ['daily_quotes', 'bars', 'data', 'quotes']) if (Array.isArray(j[k])) return j[k];
   for (const v of Object.values(j)) if (Array.isArray(v)) return v;
   return [];
-}
-
-// ---- series helpers ---------------------------------------------------------
-function lastClose(s) { return s.length ? s[s.length - 1].c : null; }
-function prevClose(s) { return s.length >= 2 ? s[s.length - 2].c : (s.length ? s[0].c : null); }
-function closeOnOrBefore(s, target) {
-  let val = null;
-  for (const pt of s) { if (pt.t <= target) val = pt.c; else break; }
-  return val ?? (s.length ? s[0].c : null);
 }
 
 // ---- date helpers (UTC getters on a JST-shifted Date) -----------------------
@@ -291,7 +275,8 @@ function fmt(d) { // YYYYMMDD (V2 date param format)
 function fmtDash(d) { // YYYY-MM-DD (display)
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
+function code4(code) { return String(code).slice(0, 4); } // J-Quants uses 5-digit (4-digit + '0')
 const round2 = (x) => Math.round(x * 100) / 100;
 
 // exported for unit tests (ignored by the Worker runtime)
-export const _internals = { shapeAllPeriods, shapePeriod, buildTimeline, weightSnapshot, periodBaseDates, closeOnOrBefore, prevClose, lastClose, addMonths, addDays, fmt, pickPrice, pickDate, firstArray, corsHeaders };
+export const _internals = { shapePeriod, shapeTimeline, weightMapFromLatest, reconcileChange, periodBaseDates, addMonths, addDays, fmt, code4, pickAdj, pickRaw, firstArray, corsHeaders };
