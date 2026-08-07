@@ -169,41 +169,56 @@ test('us parseSpark: junk payload → empty map', () => {
   assert.equal(US.parseSpark({ spark: { result: null } }).size, 0);
 });
 
-// ---- Nikkei worker: shapeTimeline is pure over daily quote maps -------------
-test('nikkei shapeTimeline: fixed footprint (paf×latest close), daily change%', () => {
-  // Use a real constituent code from the bundled params so PARAMS lookup hits.
-  const CODE = '6857'; // Advantest (4-digit key used internally)
-  const mkDay = (dstr, price) => ({ date: new Date(dstr), map: new Map([[CODE, price]]) });
-  const days = [
-    mkDay('2026-07-22', 100),
-    mkDay('2026-07-23', 110), // +10%
-    mkDay('2026-07-24', 99),  // -10%
-  ];
-  const latestMap = new Map([[CODE, 99]]);
-  const { frames } = NIKKEI.shapeTimeline(days, latestMap);
-  assert.equal(frames.length, 2);
+// ---- Nikkei worker: series-based shapers (per-code continuous series) --------
+// The refactor fetches one adjusted series per constituent so latest and base
+// share a single adjustment basis (no cross-snapshot split leak). These cover the
+// pure shaping over that series. Codes are real bundled-params codes so PARAMS hits.
+test('nikkei buildTimeline: fixed footprint (paf×latest close), daily change%', () => {
+  const dates = [0, 1, 2, 3, 4, 5].map((i) => new Date(Date.UTC(2026, 6, 20 + i)));
+  const mk = (vals) => dates.map((t, i) => ({ t, c: vals[i] }));
+  const seriesByCode = new Map([
+    ['6857', mk([100, 110, 99, 99, 108, 108])], // +10%, -10%, 0%, +9.09%, 0%
+    ['8035', mk([50, 50, 55, 55, 55, 60])],
+  ]);
+  const { frames } = NIKKEI.buildTimeline(seriesByCode);
+  assert.equal(frames.length, 5);
 
-  const pick = (f) => f.constituents.find((c) => String(c.code).startsWith(CODE));
-  // change%: frame0 = +10, frame1 = -10
-  assert.equal(pick(frames[0]).changePct, 10);
-  assert.equal(pick(frames[1]).changePct, -10);
-  // footprint (weight%) identical across frames, and > 0
-  const a = pick(frames[0]).weight, b = pick(frames[1]).weight;
+  const pick = (f, code) => f.constituents.find((c) => c.code === code);
+  // frame 0 = day1 vs day0 → 6857 +10%; frame 1 = day2 vs day1 → 6857 −10%.
+  assert.equal(pick(frames[0], '6857').changePct, 10);
+  assert.equal(pick(frames[1], '6857').changePct, -10);
+  // footprint (weight%) identical across every frame, and > 0.
+  const a = pick(frames[0], '6857').weight, b = pick(frames[1], '6857').weight;
   assert.equal(a, b);
   assert.ok(a > 0);
-  assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-23', '2026-07-24']);
+  assert.deepEqual(frames.map((f) => f.asOf), ['2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25']);
 });
 
-test('nikkei weightMapFromLatest: paf×close share of Σ, as a percent summing ~100', () => {
-  // Two real constituent codes from the bundled params.
-  const latestMap = new Map([['6857', 100], ['8035', 100]]);
-  const map = NIKKEI.weightMapFromLatest(latestMap);
+test('nikkei weightSnapshot: paf×close share of Σ, as a percent summing ~100', () => {
+  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
+  const mk = (vals) => [d(0), d(1)].map((t, i) => ({ t, c: vals[i] }));
+  const seriesByCode = new Map([['6857', mk([90, 100])], ['8035', mk([90, 100])]]);
+  const map = NIKKEI.weightSnapshot(seriesByCode);
   const a = map.get('6857'), b = map.get('8035');
   assert.ok(a > 0 && b > 0);
-  // only these two names have a latest close, so their weights sum to 100.
+  // only these two names have a series, so their weights sum to 100.
   assert.ok(Math.abs(a + b - 100) < 1e-9);
 });
 
-test('nikkei shapeTimeline: fewer than 2 days → no frames', () => {
-  assert.deepEqual(NIKKEI.shapeTimeline([{ date: new Date(), map: new Map() }], new Map()).frames, []);
+test('nikkei shapePeriod (1D): change from the same series (split-safe, no basis leak)', () => {
+  const d = (i) => new Date(Date.UTC(2026, 6, 20 + i));
+  // ANA-like: latest 3163 vs prev 3200 → −1.16% — NOT the spurious −33.95% a
+  // cross-snapshot adjustment-basis mismatch produced (prev day at 4789).
+  const seriesByCode = new Map([['9202', [d(0), d(1), d(2)].map((t, i) => ({ t, c: [3100, 3200, 3163][i] }))]]);
+  const periods = NIKKEI.shapeAllPeriods(seriesByCode);
+  const c = periods['1D'].constituents.find((x) => x.code === '9202');
+  const exp = ((3163 - 3200) / 3200) * 100;
+  assert.ok(Math.abs(c.changePct - Math.round(exp * 100) / 100) < 1e-9);
+  assert.ok(c.weight > 0); // sole name with a series → 100%
+  assert.equal(c.nameEn, 'ANA HOLDINGS'); // English name flows through
+});
+
+test('nikkei buildTimeline: too-short series → no frames', () => {
+  const one = new Map([['6857', [{ t: new Date(), c: 5 }]]]);
+  assert.deepEqual(NIKKEI.buildTimeline(one).frames, []);
 });
